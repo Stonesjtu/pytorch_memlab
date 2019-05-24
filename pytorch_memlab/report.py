@@ -1,0 +1,167 @@
+import math
+import gc
+from collections import defaultdict
+
+import torch
+
+LEN = 65
+
+# some pytorch low-level memory management constant
+# the minimal allocate memory size (Byte)
+PYTORCH_MIN_ALLOCATE = 2 ** 9
+# the minimal cache memory size (Byte)
+PYTORCH_MIN_CACHE = 2 ** 20
+
+class MemReporter():
+    """A memory reporter that collects tensors and memory usages
+
+    Parameters:
+        - model: an extra nn.Module can be passed to infer the name
+        of Tensors
+
+    """
+    def __init__(self, model=None):
+        self.tensor_name = defaultdict(list)
+        self.device_mapping = defaultdict(list)
+        self.device_tensor_stat = {}
+        # to numbering the unknown tensors
+        self.name_idx = 0
+        if model is not None:
+            assert isinstance(model, torch.nn.Module)
+            # for model with tying weight, multiple parameters may share
+            # the same underlying tensor
+            for name, param in model.named_parameters():
+                self.tensor_name[param].append(name)
+
+    def _get_tensor_name(self, tensor):
+        if tensor in self.tensor_name:
+            name = self.tensor_name[tensor]
+        # use numbering if no name can be inferred
+        else:
+            name = type(tensor).__name__ + str(self.name_idx)
+            self.tensor_name[tensor] = name
+            self.name_idx += 1
+        return name
+
+    def collect_tensor(self):
+        """Collect all tensor objects tracked by python
+
+        NOTICE:
+            - the buffers for backward which is implemented in C++ are
+            not tracked by python's reference counting.
+            - the gradients(.grad) of Parameters is not collected, and
+            I don't know why.
+        """
+        #FIXME: make the grad tensor collected by gc
+        objects = gc.get_objects()
+        tensors = [obj for obj in objects if isinstance(obj, torch.Tensor)]
+        for t in tensors:
+            self.device_mapping[t.device].append(t)
+
+    def get_stats(self):
+        """Get the memory stat of tensors and then release them
+
+        As a memory profiler, we cannot hold the reference to any tensors, which
+        causes possibly inaccurate memory usage stats, so we delete the tensors after
+        getting required stats"""
+        visited_data = {}
+        self.device_tensor_stat.clear()
+
+        def get_tensor_stat(tensor):
+            """Get the stat of a single tensor
+
+            Returns:
+                - stat: a tuple containing (tensor_name, tensor_size,
+            tensor_memory)
+            """
+            assert isinstance(tensor, torch.Tensor)
+
+            name = self._get_tensor_name(tensor)
+
+            numel = tensor.numel()
+            element_size = tensor.element_size()
+            fact_memory_size = numel * element_size
+            # since pytorch allocate at least 512 Bytes for any tensor, round
+            # up to a multiple of 512
+            memory_size = math.ceil(fact_memory_size / PYTORCH_MIN_ALLOCATE) \
+                    * PYTORCH_MIN_ALLOCATE
+
+            # tensor.storage should be the actual object related to memory
+            # allocation
+            data_ptr = tensor.storage().data_ptr()
+            if data_ptr in visited_data:
+                name = '{}(->{})'.format(
+                    name,
+                    visited_data[data_ptr],
+                )
+                # don't count the memory for reusing same underlying storage
+                memory_size = 0
+            else:
+                visited_data[data_ptr] = name
+
+            size = tuple(tensor.size())
+            # torch scalar has empty size
+            if not size:
+                size = (1,)
+
+            return (name, size, numel, memory_size)
+
+        for device, tensors in self.device_mapping.items():
+            tensor_stats = []
+            for tensor in tensors:
+
+                if tensor.numel() == 0:
+                    continue
+                stat = get_tensor_stat(tensor)  # (name, shape, numel, memory_size)
+                tensor_stats.append(stat)
+                if isinstance(tensor, torch.nn.Parameter):
+                    if tensor.grad is not None:
+                        # manually specify the name of gradient tensor
+                        self.tensor_name[tensor.grad] = '{}.grad'.format(
+                            self._get_tensor_name(tensor)
+                        )
+                        stat = get_tensor_stat(tensor.grad)
+                        tensor_stats.append(stat)
+
+            self.device_tensor_stat[device] = tensor_stats
+
+        self.device_mapping.clear()
+
+    def print_stats(self):
+        # header
+        print('{}\t{}\t\t\t{}'.format('Element type', 'Size', 'Used MEM(MBytes)') )
+        for device, tensor_stats in self.device_tensor_stat.items():
+            print('Storage on {}'.format(device))
+            print('-'*LEN)
+            total_mem = 0
+            total_numel = 0
+            for stat in tensor_stats:
+                name, size, numel, mem = stat
+                print('{}\t\t{}\t\t{:.2f}'.format(
+                    name,
+                    size,
+                    mem / 2**20,
+                ))
+                total_mem += mem
+                total_numel += numel
+
+            print('-'*LEN)
+            print('Total Tensors: {} \tUsed Memory: {:.2f} MBytes'.format(
+                total_numel, total_mem / 2**20
+            ))
+
+            if device != torch.device('cpu'):
+                with torch.cuda.device(device):
+                    memory_allocated = torch.cuda.memory_allocated()
+                print('The allocated memory on {}: {:.2f} MBytes'.format(
+                    device, memory_allocated / 2**20,
+                ))
+                if memory_allocated != total_mem:
+                    print('Memory differs due to the matrix alignment')
+            print('-'*LEN)
+
+    def report(self):
+        """Interface for end-users to directly print the memory usage"""
+        self.collect_tensor()
+        self.get_stats()
+        self.print_stats()
