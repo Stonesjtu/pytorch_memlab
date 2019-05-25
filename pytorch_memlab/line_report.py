@@ -5,8 +5,7 @@ import gc
 from collections import defaultdict
 
 import torch
-from hurry.filesize import size as readable_size
-
+from .utils import readable_size
 
 class LineProfiler:
     """ Time the execution of lines of Python code.
@@ -51,24 +50,25 @@ class LineProfiler:
         sys.settrace(None)
 
     def trace_callback(self, frame, event, arg):
-        # if event not in ['line', 'return']:
-        #     return self.trace_callback
 
         if event == 'call':
             return self.trace_callback
 
-        # if event in ['line', 'return']:
-        if event == 'line':
-            lineno = frame.f_lineno
-            if frame.f_code in self.code_map:
-                print(event)
-                allocated_memory = torch.cuda.memory_allocated()
-                cached_memory = torch.cuda.memory_cached()
-                torch.cuda.empty_cache()
-                self.code_map[frame.f_code]['line_stat'][lineno].append((allocated_memory, cached_memory))
+        if event in ['line', 'return'] and frame.f_code in self.code_map:
+            line_stat = self.code_map[frame.f_code]['line_stat']
+            allocated_memory = torch.cuda.memory_allocated()
+            cached_memory = torch.cuda.memory_cached()
+            torch.cuda.empty_cache()
+            if event == 'return':
+                lineno = max(line_stat.keys()) + 1
+            else:
+                lineno = frame.f_lineno
+            line_stat[lineno].append((allocated_memory, cached_memory))
         return
 
     def print_stat(self):
+        """Print the stat of each functions
+        """
         for code, stat in self.code_map.items():
             show_func(
                 filename=code.co_filename,
@@ -83,7 +83,6 @@ def show_func(filename, trace_stat, stream=None):
         stream = sys.stdout
 
     template = '%6s %9s %12s %8s %8s  %-s'
-    d = {}
     func_name = trace_stat['func_name']
 
     linenos = list(trace_stat['line_stat'].keys())
@@ -102,19 +101,27 @@ def show_func(filename, trace_stat, stream=None):
         # Fake empty lines so we can see the timings, if not the code.
         nlines = max(linenos) - min(min(linenos), start_lineno) + 1
         sublines = [''] * nlines
+
     prev_max_allocated = 0
     prev_max_cached = 0
+    is_first = True
+    d = {}
+    # .items ensure the returned tuple is sorted by key (lineno)
     for lineno, line_stat in trace_stat['line_stat'].items():
         all_allocated_memory = [ls[0] for ls in line_stat]
         all_cached_memory = [ls[1] for ls in line_stat]
         max_allocated = max(all_allocated_memory)
         max_cached = max(all_cached_memory)
-        d[lineno] = (
-            readable_size(max_allocated),
-            readable_size(max_cached),
-            readable_size(max_allocated - prev_max_allocated),
-            readable_size(max_cached - prev_max_cached)
-        )
+        if is_first:
+            is_first = False
+        else:
+            d[real_lineno] = (
+                readable_size(max_allocated),
+                readable_size(max_cached),
+                readable_size(max_allocated - prev_max_allocated),
+                readable_size(max_cached - prev_max_cached),
+            )
+        real_lineno = lineno
         prev_max_allocated = max_allocated
         prev_max_cached = max_cached
 

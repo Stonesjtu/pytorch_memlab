@@ -3,8 +3,9 @@ import gc
 from collections import defaultdict
 
 import torch
+from .utils import readable_size
 
-LEN = 65
+LEN = 79
 
 # some pytorch low-level memory management constant
 # the minimal allocate memory size (Byte)
@@ -32,6 +33,8 @@ class MemReporter():
             # the same underlying tensor
             for name, param in model.named_parameters():
                 self.tensor_name[param].append(name)
+        for param, name in self.tensor_name.items():
+            self.tensor_name[param] = '+'.join(name)
 
     def _get_tensor_name(self, tensor):
         if tensor in self.tensor_name:
@@ -127,41 +130,50 @@ class MemReporter():
 
         self.device_mapping.clear()
 
-    def print_stats(self):
+    def print_stats(self, verbose=False):
         # header
-        print('{}\t{}\t\t\t{}'.format('Element type', 'Size', 'Used MEM(MBytes)') )
+        show_reuse = verbose
+        template_format = '{:<40s}{:>20s}{:>10s}'
+        print(template_format.format('Element type', 'Size', 'Used MEM') )
         for device, tensor_stats in self.device_tensor_stat.items():
-            print('Storage on {}'.format(device))
             print('-'*LEN)
+            print('Storage on {}'.format(device))
             total_mem = 0
             total_numel = 0
             for stat in tensor_stats:
                 name, size, numel, mem = stat
-                print('{}\t\t{}\t\t{:.2f}'.format(
-                    name,
-                    size,
-                    mem / 2**20,
+                if not show_reuse:
+                    name = name.split('(')[0]
+                print(template_format.format(
+                    str(name),
+                    str(size),
+                    readable_size(mem),
                 ))
                 total_mem += mem
                 total_numel += numel
 
             print('-'*LEN)
-            print('Total Tensors: {} \tUsed Memory: {:.2f} MBytes'.format(
-                total_numel, total_mem / 2**20
+            print('Total Tensors: {} \tUsed Memory: {}'.format(
+                total_numel, readable_size(total_mem),
             ))
 
             if device != torch.device('cpu'):
                 with torch.cuda.device(device):
                     memory_allocated = torch.cuda.memory_allocated()
-                print('The allocated memory on {}: {:.2f} MBytes'.format(
-                    device, memory_allocated / 2**20,
+                print('The allocated memory on {}: {}'.format(
+                    device, readable_size(memory_allocated),
                 ))
                 if memory_allocated != total_mem:
                     print('Memory differs due to the matrix alignment')
             print('-'*LEN)
 
-    def report(self):
-        """Interface for end-users to directly print the memory usage"""
+    def report(self, verbose=False):
+        """Interface for end-users to directly print the memory usage
+
+        args:
+            - verbose: flag to show tensor.storage reuse information
+
+        """
         self.collect_tensor()
         self.get_stats()
-        self.print_stats()
+        self.print_stats(verbose)
