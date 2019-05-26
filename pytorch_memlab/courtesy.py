@@ -1,35 +1,41 @@
 import gc
 import torch
-def courtesy():
-    print('before', torch.cuda.memory_allocated())
-    tensors = [obj for obj in gc.get_objects() if isinstance(obj, torch.Tensor)]
-    loc_map = {}
-    for t in tensors:
-        # in case tensors appear more than once
 
-        if id(t) not in loc_map:
-            loc_map[id(t)] = (t, t.device)
-        else:
-            print('redundant tensor encountered')
 
-        t.data = t.data.cpu()
+class Courtesy():
+    """A class to yield CUDA memory at any time in the training
 
-        # parameters have one more wrapper for .data
-        if type(t) is torch.nn.Parameter:
-            t.grad = t.grad.cpu()
+    The whole save/load is a bit tricky because all data transfer should
+    be inplace operation and gradient agnostic
+    """
+    def __init__(self):
+        self.loc_map = {}
 
-    print('after', torch.cuda.memory_allocated())
-    # from mem_report import mem_report
-    # mem_report()
+    def yield_memory(self):
+        """Transfer all the CUDA tensors into CPU memory"""
+        tensors = [obj for obj in gc.get_objects() if isinstance(obj, torch.Tensor)]
+        for t in tensors:
+            # in case tensors appear more than once
+            if t not in self.loc_map:
+                self.loc_map[t] = t.device
 
-    for obj_id, (t, device) in loc_map.items():
-        t.data = t.data.to(device)
-        if type(t) is torch.nn.Parameter:
-            t.grad = t.grad.to(device)
+            t.data = t.data.cpu()
+            # parameters have one more wrapper for .data
+            if isinstance(t, torch.nn.Parameter):
+                t.grad.data = t.grad.cpu()
+        torch.cuda.empty_cache()
 
-    print('restored', torch.cuda.memory_allocated())
-    torch.cuda.empty_cache()
+    def restore(self):
+        """Restore the tensors into original CUDA devices"""
+        for t, device in self.loc_map.items():
+            t.data = t.data.to(device)
+            if isinstance(t, torch.nn.Parameter):
+                t.grad = t.grad.to(device)
+        self.loc_map.clear()
 
-    import time
-    time.sleep(50)
+    def __enter__(self):
+        self.yield_memory()
+        return self
 
+    def __exit__(self, *args):
+        self.restore()

@@ -8,7 +8,7 @@ import torch
 from .utils import readable_size
 
 class LineProfiler:
-    """ Time the execution of lines of Python code.
+    """Profile the memory usage info for each line in pytorch
     """
 
     def __init__(self, *functions):
