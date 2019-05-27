@@ -74,6 +74,34 @@ class LineProfiler:
                 filename=code.co_filename,
                 trace_stat=stat,
             )
+def profile(output_interval=1, enable=True):
+    """A function decorator to get the profiling info
+
+    Args:
+        - func: the function or method to profile on
+        - enable: whether to enable the profiling mode, so users don't have to
+        modify any source code for enabling and disabling profiling.
+        - output interval: frequency of output the profiling results
+    """
+
+    def inner_decorator(func):
+        func.cur_idx = 1
+        line_profiler = LineProfiler()
+        if enable:
+            line_profiler.add_function(func)
+            line_profiler.enable()
+
+        def run_func(*args, **kwargs):
+            res = func(*args, **kwargs)
+            if enable:
+                if func.cur_idx % output_interval == 0:
+                    line_profiler.print_stat()
+                func.cur_idx += 1
+            return res
+
+        return run_func
+    return inner_decorator
+
 
 
 def show_func(filename, trace_stat, stream=None):

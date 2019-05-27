@@ -1,6 +1,6 @@
 import torch
 
-from pytorch_memlab.line_report import LineProfiler
+from pytorch_memlab.line_report import LineProfiler, profile
 
 
 def test_line_report():
@@ -28,5 +28,17 @@ def test_line_report():
     work_2()
 
     line_profiler.disable()
-    print(line_profiler.code_map)
-    line_profiler.print_stat()
+    # line_profiler.print_stat()
+
+def test_line_report_decorator():
+
+    @profile(output_interval=3)
+    def work():
+        # comment
+        linear = torch.nn.Linear(100, 100).cuda()
+        linear_2 = torch.nn.Linear(100, 100).cuda()
+        linear_3 = torch.nn.Linear(100, 100).cuda()
+
+    work()
+    work()
+    work()
