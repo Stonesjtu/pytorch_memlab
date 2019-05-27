@@ -3,19 +3,38 @@ import sys
 import inspect
 import gc
 from collections import defaultdict
+from functools import wraps
 
 import torch
 from .utils import readable_size
 
 class LineProfiler:
-    """Profile the memory usage info for each line in pytorch
+    """Profile the CUDA memory usage info for each line in pytorch
+
+    This class registers callbacks for added functions to profiling them line
+    by line, and collects all the statistics in CUDA memory. Usually you may
+    want to use simpler wrapper below `profile` or `profile_every`.
+
+    The CUDA memory is collected only on the **current** cuda device.
+
+    Usage:
+        ```python
+        with LineProfiler(func) as lp:
+            func
+        lp.print_stats()
+
+        lp = LineProfiler(func)
+        lp.enable()
+        func()
+        lp.disable()
+        lp.print_stats()
+        ```
     """
 
     def __init__(self, *functions):
         self.functions = []
         self.code_map = {}
-        self.last_time = {}
-        self.enable_count = 0
+        self.enabled = False
         for func in functions:
             self.add_function(func)
 
@@ -36,20 +55,31 @@ class LineProfiler:
             self.functions.append(func)
             self.code_map[code]['source_code'] = inspect.getsourcelines(func)
 
+        # re-register the newer trace_callback
+        if self.enabled:
+            self.register_callback()
+
     def __enter__(self):
-        self.enable_by_count()
+        self.enable()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disable_by_count()
+        self.disable()
+
+    def register_callback(self):
+        """Register the trace_callback only on demand"""
+        if self.functions:
+            sys.settrace(self.trace_callback)
 
     def enable(self):
-        sys.settrace(self.trace_callback)
+        self.enabled = True
+        self.register_callback()
 
     def disable(self):
-        self.last_time = {}
+        self.enabled = False
         sys.settrace(None)
 
     def trace_callback(self, frame, event, arg):
+        """Trace the execution of python line-by-line"""
 
         if event == 'call':
             return self.trace_callback
@@ -66,7 +96,7 @@ class LineProfiler:
             line_stat[lineno].append((allocated_memory, cached_memory))
         return
 
-    def print_stat(self):
+    def print_stats(self):
         """Print the stat of each functions
         """
         for code, stat in self.code_map.items():
@@ -74,8 +104,26 @@ class LineProfiler:
                 filename=code.co_filename,
                 trace_stat=stat,
             )
-def profile(output_interval=1, enable=True):
-    """A function decorator to get the profiling info
+
+    def print_func_stats(self, func):
+        """Print the stat of a registered function"""
+        code = func.__code__
+        if code in self.code_map:
+            show_func(
+                filename=code.co_filename,
+                trace_stat=self.code_map[code],
+            )
+
+
+global_line_profiler = LineProfiler()
+global_line_profiler.enable()
+
+def profile_every(output_interval=1, enable=True):
+    """Profile the CUDA memory usage of target function line by line
+
+    Prints the profiling output every `output_interval` execution of the target
+    function
+    The CUDA memory is collected only on the **current** cuda device.
 
     Args:
         - func: the function or method to profile on
@@ -86,23 +134,57 @@ def profile(output_interval=1, enable=True):
 
     def inner_decorator(func):
         func.cur_idx = 1
-        line_profiler = LineProfiler()
-        if enable:
-            line_profiler.add_function(func)
-            line_profiler.enable()
 
+        if enable:
+            global_line_profiler.add_function(func)
+
+        @wraps(func)
         def run_func(*args, **kwargs):
             res = func(*args, **kwargs)
             if enable:
                 if func.cur_idx % output_interval == 0:
-                    line_profiler.print_stat()
+                    global_line_profiler.print_func_stats(func)
                 func.cur_idx += 1
             return res
 
         return run_func
     return inner_decorator
 
+def profile(func):
+    """Profile the CUDA memory usage of target function line by line
 
+    The profiling results will be printed at exiting, KeyboardInterrupt raised.
+    The CUDA memory is collected only on the **current** cuda device.
+
+    Usage:
+        ```python
+        @profile
+        def foo():
+            linear = torch.nn.Linear(100, 100).cuda()
+
+        foo()
+
+        class Foo(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(100, 100).cuda()
+
+            @profile
+            def forward(self, inp):
+                return self.linear(inp)
+
+        inp = torch.Tensor(50, 100).cuda()
+        foo = Foo()
+        foo(inp)
+        ```
+    """
+    import atexit
+    global_line_profiler.add_function(func)
+    def print_stats_atexit():
+        global_line_profiler.print_func_stats(func)
+    atexit.register(print_stats_atexit)
+
+    return func
 
 def show_func(filename, trace_stat, stream=None):
     """ Show results for a single function.
