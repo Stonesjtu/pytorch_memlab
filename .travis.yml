@@ -1,0 +1,19 @@
+dist: xenial
+language: python
+matrix:
+    include:
+        - python: "2.7"
+        - python: "3.5"
+        - python: "3.6"
+        - python: "3.7"
+
+install:
+- python setup.py install
+
+deploy:
+  provider: pypi
+  user: yoursky
+  on:
+    tags: true
+  password:
+    secure: YTCtKhxl/lZRTMXUTVrJ3E1z6sqCOWRQ2QryusR2j71awsSBU4ptaZoNFkG+bGGc+Q32NI7b/S3T6FlUjsewk51U78ampK94GoPQsQThRTRlJgg/ZrwVmIuY3dVjMSk2qqOBxHm6D+BxgZmtCmVk/Vyl0aywI+hLeTV1yO+zXrxnPBOUm+jA3cIn6JU/GhAomC+oPP+FIJRFWrCbbBtdzmIUUBt1lqWib6TmN2SqANpG9Z87GtbLvwC0NV8RVEYPDZn20G4+LCo8021BXyhOGftpXRinQNoDYn0NjFcJLPO/5wTA76/gK5jXIgBgRyPSNjx2JDIenaXCr4E97BfGtHw3i3AFGeekl0KnX8jLpJhqJ4kwseKDZJdJkRDs0lSkGJ0bO2Z8Z8pQZ4GuZ9UOtQSa8IxcpekUAjJFSANZSXfz0BUvsnO0nwkjFCfL45/mnqdyOtDSN3Yq4m0WKqKg/wWiW2jza/tf9zI6Hs4XQNTpicAyslL5iEWc0O9mQvK/XexNKlwX4j7B4fBOSGZA2vOidhH6C47ckSt8BnUaqJsgq1mlUgQC4qotH+EmtvVDNd3uf9E4GSg8Bb6vfw1+fmmwV78ZapHDZArj6e4g2YR2Cz8GzcEjuVoPje2aFEUq1XRD6kMozsczVzI4yK+IcykDwUL8ziniCjqSeWJth1I=

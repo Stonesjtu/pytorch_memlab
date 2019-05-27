@@ -1,9 +1,9 @@
-pytorch memlab
+pytorch_memlab
 ======
 
-A **CUDA** memory management laboratory for pytorch, it consists of different
-parts about the memory:
-  - A `line_profiler` style CUDA memory profiler
+A simple and accurate **CUDA** memory management laboratory for pytorch,
+it consists of different parts about the memory:
+  - A `line_profiler` style CUDA memory profiler with simple API.
   - A reporter to inspect tensors occupying the CUDA memory.
   - An interesting feature to temporarily move all the CUDA tensors into
   CPU memory for courtesy, and of course the backward transferring.
@@ -20,6 +20,9 @@ much CUDA memory.
 In this repo, I'm going to share some useful tools to help debugging OOM, or
 to inspect the underlying mechanism if anyone is interested in.
 
+
+User-Doc
+-----
 
 ### Memory Profiler
 
