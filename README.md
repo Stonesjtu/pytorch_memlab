@@ -1,9 +1,14 @@
 pytorch memlab
 ======
 
-A **CUDA** memory management laboratory for pytorch
+A **CUDA** memory management laboratory for pytorch, it consists of different
+parts about the memory:
+  - A `line_profiler` style CUDA memory profiler
+  - A reporter to inspect tensors occupying the CUDA memory.
+  - An interesting feature to temporarily move all the CUDA tensors into
+  CPU memory for courtesy, and of course the backward transferring.
 
-Why I wrote this
+What's for
 -----
 
 Out-Of-Memory errors in pytorch happen frequently, for new-bees and
@@ -54,8 +59,8 @@ terminology:
   - `Max usage`: the max of pytorch's allocated memory (the finish memory)
   The memory usage after this line is executed.
   - `Peak usage`: the max of pytorch's cached memory (the peak memory)
-  The peak memory usage during the execution of this line. (Probably) pytorch
-  caches 1M CUDA memory as atomic, so the cached memory is unchanged in the
+  The peak memory usage during the execution of this line. Pytorch caches
+  1M CUDA memory as atomic memory, so the cached memory is unchanged in the
   sample above.
   - `diff max`: the `Max memory` usage difference caused by this line
   - `diff peak`: the `Peak memory` usage difference caused by this line
@@ -104,7 +109,6 @@ reporter = MemReporter()
 reporter.report()
 ```
 outputs:
-
 ```
 Element type                                            Size  Used MEM
 -------------------------------------------------------------------------------
@@ -132,7 +136,6 @@ print('========= after backward =========')
 reporter.report()
 ```
 outputs:
-
 ```
 ========= before backward =========
 Element type                                            Size  Used MEM
@@ -182,6 +185,7 @@ out.backward()
 reporter = MemReporter(container)
 reporter.report(verbose=True)
 ```
+
 outputs:
 ```
 Element type                                            Size  Used MEM
@@ -202,6 +206,7 @@ The allocated memory on cuda:0: 10.02M
 ```
 
 - You can better understand the memory layout for more complicated module:
+
 ```python
 lstm = torch.nn.LSTM(1024, 1024).cuda()
 reporter = MemReporter(lstm)
@@ -211,6 +216,7 @@ out, _ = lstm(inp)
 out.mean().backward()
 reporter.report(verbose=True)
 ```
+
 As shown below, the `(->)` indicates the re-use of the same storage back-end
 outputs:
 ```
@@ -249,7 +255,6 @@ Memory differs due to the matrix alignment
 -------------------------------------------------------------------------------
 ```
 
-
 NOTICE:
 > When forwarding with `grad_mode=True`, pytorch maintains tensor buffers for
 > future Back-Propagation, in C level. So these buffers are not going to be
@@ -270,6 +275,7 @@ reporter = MemReporter(linear)
 out = linear(inp * (inp + 2)).mean()
 reporter.report()
 ```
+
 outputs:
 ```
 Element type                                            Size  Used MEM
@@ -288,6 +294,26 @@ Memory differs due to the matrix alignment or invisible gradient buffer tensors
 
 
 ### Courtesy
+
+Sometimes people would like to preempt your running task, but you don't want
+to save checkpoint and then load, actually all they need is GPU resources (
+typically CPU resources and CPU memory is always spare in GPU clusters), so
+you can move all your workspaces from GPU to CPU and then halt your task until
+a restart signal is triggered, instead of saving&loading checkpoints and 
+bootstrapping from scratch.
+
+Still developing..... But you can have fun with:
+```python
+from pytorch_memlab import Courtesy
+
+iamcourtesy = Courtesy()
+for i in range(num_iteration):
+    if something_happens:
+        iamcourtesy.yield_memory()
+        wait_for_restart_signal()
+        iamcourtesy.restore()
+```
+
 
 ### ACK
 
