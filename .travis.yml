@@ -10,6 +10,9 @@ matrix:
 install:
 - python setup.py install
 
+script:
+- python -c 'import pytorch_memlab'
+
 deploy:
   provider: pypi
   user: yoursky
