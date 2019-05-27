@@ -75,7 +75,7 @@ class MemReporter():
 
             Returns:
                 - stat: a tuple containing (tensor_name, tensor_size,
-            tensor_memory)
+            tensor_numel, tensor_memory)
             """
             assert isinstance(tensor, torch.Tensor)
 
@@ -83,7 +83,8 @@ class MemReporter():
 
             numel = tensor.numel()
             element_size = tensor.element_size()
-            fact_memory_size = numel * element_size
+            fact_numel = tensor.storage().size()
+            fact_memory_size = fact_numel * element_size
             # since pytorch allocate at least 512 Bytes for any tensor, round
             # up to a multiple of 512
             memory_size = math.ceil(fact_memory_size / PYTORCH_MIN_ALLOCATE) \
@@ -164,7 +165,8 @@ class MemReporter():
                     device, readable_size(memory_allocated),
                 ))
                 if memory_allocated != total_mem:
-                    print('Memory differs due to the matrix alignment')
+                    print('Memory differs due to the matrix alignment or'
+                          ' invisible gradient buffer tensors')
             print('-'*LEN)
 
     def report(self, verbose=False):
