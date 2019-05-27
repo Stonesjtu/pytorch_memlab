@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from pytorch_memlab.line_report import LineProfiler, profile, profile_every
+from pytorch_memlab import LineProfiler, profile, profile_every
 
 
 def test_line_report():
