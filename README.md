@@ -96,13 +96,14 @@ a more low-level memory usage information can be obtained by *Memory Reporter*.
 
 #### Sample
 
-A minimal one:
+- A minimal one:
 
 ```python
 linear = torch.nn.Linear(1024, 1024).cuda()
 reporter = MemReporter()
 reporter.report()
 ```
+outputs:
 
 ```
 Element type                                            Size  Used MEM
@@ -116,7 +117,7 @@ The allocated memory on cuda:0: 4.00M
 -------------------------------------------------------------------------------
 ```
 
-You can also pass in a model object for automatically name inference.
+- You can also pass in a model object for automatically name inference.
 
 ```python
 linear = torch.nn.Linear(1024, 1024).cuda()
@@ -130,6 +131,7 @@ out.backward()
 print('========= after backward =========')
 reporter.report()
 ```
+outputs:
 
 ```
 ========= before backward =========
@@ -161,7 +163,7 @@ The allocated memory on cuda:0: 10.01M
 ```
 
 
-The reporter automatically deals with the sharing weights parameters:
+- The reporter automatically deals with the sharing weights parameters:
 
 ```python
 linear = torch.nn.Linear(1024, 1024).cuda()
@@ -180,8 +182,7 @@ out.backward()
 reporter = MemReporter(container)
 reporter.report(verbose=True)
 ```
-
-- Results:
+outputs:
 ```
 Element type                                            Size  Used MEM
 -------------------------------------------------------------------------------
@@ -200,7 +201,7 @@ The allocated memory on cuda:0: 10.02M
 -------------------------------------------------------------------------------
 ```
 
-You can better understand the memory layout for more complicated module:
+- You can better understand the memory layout for more complicated module:
 ```python
 lstm = torch.nn.LSTM(1024, 1024).cuda()
 reporter = MemReporter(lstm)
@@ -210,8 +211,8 @@ out, _ = lstm(inp)
 out.mean().backward()
 reporter.report(verbose=True)
 ```
-- As shown below, the `(->)` indicates the re-use of the same storage back-end
-
+As shown below, the `(->)` indicates the re-use of the same storage back-end
+outputs:
 ```
 Element type                                            Size  Used MEM
 -------------------------------------------------------------------------------
@@ -255,7 +256,7 @@ NOTICE:
 > managed or collected by pytorch. But if you store these intermediate results
 > as python variables, then they will be reported.
 
-##### A failed example due to pytorch's C side tensor buffers
+- A failed example due to pytorch's C side tensor buffers
 
 In the following example, a temp buffer is created at `inp * (inp + 2)` to 
 store both `inp` and `inp + 2`, unfortunately python only knows the existence
@@ -269,9 +270,7 @@ reporter = MemReporter(linear)
 out = linear(inp * (inp + 2)).mean()
 reporter.report()
 ```
-
-output:
-
+outputs:
 ```
 Element type                                            Size  Used MEM
 -------------------------------------------------------------------------------
