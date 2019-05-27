@@ -1,3 +1,3 @@
 from .courtesy import Courtesy
-from .report import MemReporter
-from .line_report import LineProfiler
+from .mem_reporter import MemReporter
+from .line_profiler import LineProfiler, profile, profile_every
