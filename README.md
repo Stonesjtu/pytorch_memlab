@@ -314,6 +314,16 @@ for i in range(num_iteration):
         iamcourtesy.restore()
 ```
 
+#### Known Issues
+
+- As is stated above in `Memory_Reporter`, intermediate tensors are not covered
+properly, so you may want to insert such courtesy logics after `backward` or
+before `forward`.
+- Currently the CUDA context of pytorch requires about 1 GB CUDA memory, which
+means even all Tensors are on CPU, 1GB of CUDA memory is wasted, :-(. However
+it's still under investigation if I can fully destroy the context and then
+re-init.
+
 
 ### ACK
 
