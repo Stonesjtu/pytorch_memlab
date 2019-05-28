@@ -1,7 +1,6 @@
 import os
 import sys
 import inspect
-import gc
 from collections import defaultdict
 from functools import wraps
 
@@ -216,6 +215,7 @@ def show_func(filename, trace_stat, stream=None):
     prev_max_cached = 0
     is_first = True
     d = {}
+    real_lineno = 0
     # .items ensure the returned tuple is sorted by key (lineno)
     for lineno, line_stat in trace_stat['line_stat'].items():
         all_allocated_memory = [ls[0] for ls in line_stat]
@@ -238,7 +238,7 @@ def show_func(filename, trace_stat, stream=None):
     linenos = range(start_lineno, start_lineno + len(sublines))
     empty = ('', '', '', '')
     header = template % ('Line #', 'Max usage', 'Peak usage', 'diff max', 'diff peak',
-        'Line Contents')
+                         'Line Contents')
     stream.write("\n")
     stream.write(header)
     stream.write("\n")
@@ -246,7 +246,8 @@ def show_func(filename, trace_stat, stream=None):
     stream.write("\n")
     for lineno, line in zip(linenos, sublines):
         show_line_stat = d.get(lineno, empty)
-        txt = template % (lineno, *show_line_stat,
+        max_usage, peak_usage, diff_max, diff_peak = show_line_stat
+        txt = template % (lineno, max_usage, peak_usage, diff_max, diff_peak,
                           line.rstrip('\n').rstrip('\r'))
         stream.write(txt)
         stream.write("\n")
