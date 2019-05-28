@@ -53,6 +53,7 @@ class LineProfiler:
             self.code_map[code]['func_name'] = func.__name__
             self.functions.append(func)
             self.code_map[code]['source_code'] = inspect.getsourcelines(func)
+            self.code_map[code]['last_lineno'] = -1
 
         # re-register the newer trace_callback
         if self.enabled:
@@ -92,7 +93,9 @@ class LineProfiler:
                 lineno = max(line_stat.keys()) + 1
             else:
                 lineno = frame.f_lineno
-            line_stat[lineno].append((allocated_memory, cached_memory))
+            last_lineno = self.code_map[frame.f_code]['last_lineno']
+            line_stat[last_lineno].append((allocated_memory, cached_memory))
+            self.code_map[frame.f_code]['last_lineno'] = lineno
         return
 
     def print_stats(self):
@@ -213,25 +216,23 @@ def show_func(filename, trace_stat, stream=None):
 
     prev_max_allocated = 0
     prev_max_cached = 0
-    is_first = True
-    d = {}
-    real_lineno = 0
+    lineno_mem = {}
     # .items ensure the returned tuple is sorted by key (lineno)
     for lineno, line_stat in trace_stat['line_stat'].items():
         all_allocated_memory = [ls[0] for ls in line_stat]
         all_cached_memory = [ls[1] for ls in line_stat]
         max_allocated = max(all_allocated_memory)
         max_cached = max(all_cached_memory)
-        if is_first:
-            is_first = False
-        else:
-            d[real_lineno] = (
+
+        # the first line_stat is for the very beginning of function
+        if lineno != -1:
+            lineno_mem[lineno] = (
                 readable_size(max_allocated),
                 readable_size(max_cached),
                 readable_size(max_allocated - prev_max_allocated),
                 readable_size(max_cached - prev_max_cached),
             )
-        real_lineno = lineno
+
         prev_max_allocated = max_allocated
         prev_max_cached = max_cached
 
@@ -245,10 +246,11 @@ def show_func(filename, trace_stat, stream=None):
     stream.write('=' * len(header))
     stream.write("\n")
     for lineno, line in zip(linenos, sublines):
-        show_line_stat = d.get(lineno, empty)
+        show_line_stat = lineno_mem.get(lineno, empty)
         max_usage, peak_usage, diff_max, diff_peak = show_line_stat
         txt = template % (lineno, max_usage, peak_usage, diff_max, diff_peak,
                           line.rstrip('\n').rstrip('\r'))
         stream.write(txt)
         stream.write("\n")
     stream.write("\n")
+    stream.flush()
