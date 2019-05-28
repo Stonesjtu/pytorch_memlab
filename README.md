@@ -10,6 +10,19 @@ it consists of different parts about the memory:
   - An interesting feature to temporarily move all the CUDA tensors into
   CPU memory for courtesy, and of course the backward transferring.
 
+Installation
+-----
+
+- Released version:
+```bash
+pip install pytorch_memlab
+```
+
+- Newest version:
+```bash
+pip install git+https://github.com/stonesjtu/pytorch_memlab
+```
+
 What's for
 -----
 
