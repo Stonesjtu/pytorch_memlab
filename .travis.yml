@@ -9,6 +9,7 @@ matrix:
 
 install:
 - python setup.py install
+- pip install -r requirements.txt
 
 script:
 - python -c 'import pytorch_memlab'
