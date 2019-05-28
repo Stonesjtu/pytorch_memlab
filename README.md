@@ -1,5 +1,6 @@
 pytorch_memlab
 ======
+[![Build Status](https://travis-ci.com/Stonesjtu/pytorch-memlab.svg?token=vyTdxHbi1PCRzV6disHp&branch=master)](https://travis-ci.com/Stonesjtu/pytorch-memlab)
 
 A simple and accurate **CUDA** memory management laboratory for pytorch,
 it consists of different parts about the memory:
