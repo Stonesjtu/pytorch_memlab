@@ -349,3 +349,10 @@ re-init.
 I suffered a lot debugging weird memory usage during my 3-years of developing
 efficient Deep Learning models, and of course learned a lot from the great
 open source community.
+
+## CHANGES
+
+##### 0.0.2 (2019-06-04)
+  - Fix statistics shift in loop
+##### 0.0.1 (2019-05-28)
+  - initial release
