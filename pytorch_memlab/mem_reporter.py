@@ -137,7 +137,7 @@ class MemReporter():
         template_format = '{:<40s}{:>20s}{:>10s}'
         print(template_format.format('Element type', 'Size', 'Used MEM') )
         for device, tensor_stats in self.device_tensor_stat.items():
-            print('-'*LEN)
+            print('-' * LEN)
             print('Storage on {}'.format(device))
             total_mem = 0
             total_numel = 0
