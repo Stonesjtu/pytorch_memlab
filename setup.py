@@ -25,6 +25,7 @@ setup(
     zip_safe=True,
     install_requires=[
         'setuptools',
+        'calmsize',
     ],
     packages=['pytorch_memlab'],
 )
