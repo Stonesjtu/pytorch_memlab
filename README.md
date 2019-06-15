@@ -352,6 +352,8 @@ open source community.
 
 ## CHANGES
 
+##### 0.0.3 (2019-06-15)
+  - Install dependency for pip installation
 ##### 0.0.2 (2019-06-04)
   - Fix statistics shift in loop
 ##### 0.0.1 (2019-05-28)
