@@ -154,6 +154,7 @@ out.backward()
 print('========= after backward =========')
 reporter.report()
 ```
+
 outputs:
 ```
 ========= before backward =========
@@ -279,6 +280,9 @@ NOTICE:
 > future Back-Propagation, in C level. So these buffers are not going to be
 > managed or collected by pytorch. But if you store these intermediate results
 > as python variables, then they will be reported.
+
+- You can also filter the device to report on by passing extra arguments:
+`report(device=torch.device(0))`
 
 - A failed example due to pytorch's C side tensor buffers
 

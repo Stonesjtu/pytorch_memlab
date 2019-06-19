@@ -9,11 +9,12 @@ concentrate_mode = False
 def test_reporter():
     linear = torch.nn.Linear(1024, 1024).cuda()
     inp = torch.Tensor(512, 1024).cuda()
+    reporter = MemReporter(linear)
 
-    out = linear(inp).mean()
+    out = linear(inp*(inp+3)).mean()
+    reporter.report()
     out.backward()
 
-    reporter = MemReporter(linear)
     reporter.report()
 
 @pytest.mark.skipif(concentrate_mode, reason='concentrate')
@@ -43,3 +44,16 @@ def test_reporter_LSTM():
 
     reporter = MemReporter(lstm)
     reporter.report()
+
+@pytest.mark.skipif(concentrate_mode, reason='concentrate')
+def test_reporter_device():
+    lstm_cpu = torch.nn.LSTM(256, 256)
+    lstm = torch.nn.LSTM(256, 256, num_layers=1).cuda()
+    # lstm.flatten_parameters()
+    inp = torch.Tensor(256, 256, 256).cuda()
+    out, _ = lstm(inp)
+    out.mean().backward()
+
+    reporter = MemReporter(lstm)
+    reporter.report()
+    reporter.report(device=torch.device('cuda:0'))

@@ -131,12 +131,16 @@ class MemReporter():
 
         self.device_mapping.clear()
 
-    def print_stats(self, verbose=False):
+    def print_stats(self, verbose=False, target_device=None):
         # header
         show_reuse = verbose
         template_format = '{:<40s}{:>20s}{:>10s}'
         print(template_format.format('Element type', 'Size', 'Used MEM') )
         for device, tensor_stats in self.device_tensor_stat.items():
+            # By default, if the target_device is not specified,
+            # print tensors on all devices
+            if target_device is not None and device != target_device:
+                continue
             print('-' * LEN)
             print('Storage on {}'.format(device))
             total_mem = 0
@@ -169,13 +173,17 @@ class MemReporter():
                           ' invisible gradient buffer tensors')
             print('-'*LEN)
 
-    def report(self, verbose=False):
+    def report(self, verbose=False, device=None):
         """Interface for end-users to directly print the memory usage
 
         args:
             - verbose: flag to show tensor.storage reuse information
+            - device: `torch.device` object, specify the target device
+            to report detailed memory usage. It will print memory usage
+            on all devices if not specified. Usually we only want to
+            print the memory usage on CUDA devices.
 
         """
         self.collect_tensor()
         self.get_stats()
-        self.print_stats(verbose)
+        self.print_stats(verbose, target_device=device)
