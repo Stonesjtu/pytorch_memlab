@@ -7,6 +7,27 @@ from functools import wraps
 import torch
 from .utils import readable_size
 
+
+# profile the memory usage on gpu=0 by default
+target_gpu = 0
+
+
+def set_target_gpu(gpu_id):
+    """Set the target GPU id to profile memory
+
+    Because of the lack of output space, only one GPU's memory usage is shown
+    in line profiler. However you can use this function to switch target GPU
+    to profile on. The GPU switch can be performed before profiling and even
+    in the profiled functions.
+
+    Args:
+        - gpu_id: cuda index to profile the memory on,
+        also accepts `torch.device` object.
+    """
+    global target_gpu
+    target_gpu = gpu_id
+
+
 class LineProfiler:
     """Profile the CUDA memory usage info for each line in pytorch
 
@@ -49,7 +70,8 @@ class LineProfiler:
         if code not in self.code_map:
             self.code_map[code] = {}
             self.code_map[code]['line_stat'] = defaultdict(list)
-            self.code_map[code]['func'] = func  # probable memory leak if holding this ref
+            # probable memory leak if holding this ref
+            self.code_map[code]['func'] = func
             self.code_map[code]['func_name'] = func.__name__
             self.functions.append(func)
             self.code_map[code]['source_code'] = inspect.getsourcelines(func)
@@ -86,9 +108,10 @@ class LineProfiler:
 
         if event in ['line', 'return'] and frame.f_code in self.code_map:
             line_stat = self.code_map[frame.f_code]['line_stat']
-            allocated_memory = torch.cuda.memory_allocated()
-            cached_memory = torch.cuda.memory_cached()
-            torch.cuda.empty_cache()
+            with torch.cuda.device(target_gpu):
+                allocated_memory = torch.cuda.memory_allocated()
+                cached_memory = torch.cuda.memory_cached()
+                torch.cuda.empty_cache()
             if event == 'return':
                 lineno = max(line_stat.keys()) + 1
             else:
@@ -119,6 +142,7 @@ class LineProfiler:
 
 global_line_profiler = LineProfiler()
 global_line_profiler.enable()
+
 
 def profile_every(output_interval=1, enable=True):
     """Profile the CUDA memory usage of target function line by line
@@ -152,6 +176,7 @@ def profile_every(output_interval=1, enable=True):
         return run_func
     return inner_decorator
 
+
 def profile(func):
     """Profile the CUDA memory usage of target function line by line
 
@@ -182,11 +207,13 @@ def profile(func):
     """
     import atexit
     global_line_profiler.add_function(func)
+
     def print_stats_atexit():
         global_line_profiler.print_func_stats(func)
     atexit.register(print_stats_atexit)
 
     return func
+
 
 def show_func(filename, trace_stat, stream=None):
     """ Show results for a single function.
@@ -238,8 +265,8 @@ def show_func(filename, trace_stat, stream=None):
 
     linenos = range(start_lineno, start_lineno + len(sublines))
     empty = ('', '', '', '')
-    header = template % ('Line #', 'Max usage', 'Peak usage', 'diff max', 'diff peak',
-                         'Line Contents')
+    header = template % ('Line #', 'Max usage', 'Peak usage', 'diff max',
+                         'diff peak', 'Line Contents')
     stream.write("\n")
     stream.write(header)
     stream.write("\n")
