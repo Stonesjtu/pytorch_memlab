@@ -22,7 +22,11 @@ class Courtesy():
             t.data = t.data.cpu()
             # parameters have one more wrapper for .data
             if isinstance(t, torch.nn.Parameter):
-                t.grad.data = t.grad.cpu()
+                # sometimes Parameter does not have grad
+                try:
+                    t.grad.data = t.grad.cpu()
+                finally:
+                    pass
         torch.cuda.empty_cache()
 
     def restore(self):
@@ -30,7 +34,11 @@ class Courtesy():
         for t, device in self.loc_map.items():
             t.data = t.data.to(device)
             if isinstance(t, torch.nn.Parameter):
-                t.grad = t.grad.to(device)
+                # sometimes Parameter does not have grad
+                try:
+                    t.grad = t.grad.to(device)
+                finally:
+                    pass
         self.loc_map.clear()
 
     def __enter__(self):

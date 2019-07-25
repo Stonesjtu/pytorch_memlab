@@ -106,6 +106,23 @@ class Net(torch.nn.Module):
         #do_something
 ```
 
+- The *Line Profiler* profiles the memory usage of CUDA device 0 by default,
+you may want to switch the device to profile by `set_target_gpu`. The gpu
+selection is globally,  which means you have to remember which gpu you are
+profiling on during the whole process:
+
+```python
+from pytorch_memlab import profile, set_target_gpu
+@profile
+def func():
+    net1 = torch.nn.Linear(1024, 1024).cuda(0)
+    set_target_gpu(1)
+    net2 = torch.nn.Linear(1024, 1024).cuda(1)
+    set_target_gpu(0)
+    net3 = torch.nn.Linear(1024, 1024).cuda(0)
+```
+
+
 More samples can be found in `test/test_line_profiler.py`
 
 

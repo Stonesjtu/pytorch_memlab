@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from pytorch_memlab import LineProfiler, profile, profile_every
+from pytorch_memlab import LineProfiler, profile, profile_every, set_target_gpu
 
 
 def test_line_report():
@@ -74,6 +74,21 @@ def test_line_report_profile():
         linear = torch.nn.Linear(100, 100).cuda()
         linear_2 = torch.nn.Linear(100, 100).cuda()
         linear_3 = torch.nn.Linear(100, 100).cuda()
+
+    work()
+    work()
+
+def test_line_report_profile_set_gpu():
+
+
+    @profile
+    def work():
+        # comment
+        set_target_gpu(1)
+        linear = torch.nn.Linear(100, 100).cuda(1)
+        set_target_gpu(0)
+        linear_2 = torch.nn.Linear(100, 100).cuda(0)
+        linear_3 = torch.nn.Linear(100, 100).cuda(1)
 
     work()
     work()
