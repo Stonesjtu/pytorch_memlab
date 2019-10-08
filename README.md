@@ -373,6 +373,9 @@ open source community.
 
 ## CHANGES
 
+##### 0.0.4 (2019-10-08)
+  - Add gpu switch for line-profiler(#2)
+  - Add device filter for reporter
 ##### 0.0.3 (2019-06-15)
   - Install dependency for pip installation
 ##### 0.0.2 (2019-06-04)
