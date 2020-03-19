@@ -48,13 +48,15 @@ the memory usage info for each line of code in the specified function/method.
 #### Sample:
 
 ```python
+import torch
 from pytorch_memlab import profile
 @profile
 def work():
     linear = torch.nn.Linear(100, 100).cuda()
     linear2 = torch.nn.Linear(100, 100).cuda()
     linear3 = torch.nn.Linear(100, 100).cuda()
-
+    
+work()
 ```
 
 After the script finishes or interrupted by keyboard, it gives the following
@@ -112,6 +114,7 @@ selection is globally,  which means you have to remember which gpu you are
 profiling on during the whole process:
 
 ```python
+import torch
 from pytorch_memlab import profile, set_target_gpu
 @profile
 def func():
@@ -120,6 +123,8 @@ def func():
     net2 = torch.nn.Linear(1024, 1024).cuda(1)
     set_target_gpu(0)
     net3 = torch.nn.Linear(1024, 1024).cuda(0)
+    
+func()
 ```
 
 
@@ -140,6 +145,8 @@ a more low-level memory usage information can be obtained by *Memory Reporter*.
 - A minimal one:
 
 ```python
+import torch
+from pytorch_memlab import MemReporter
 linear = torch.nn.Linear(1024, 1024).cuda()
 reporter = MemReporter()
 reporter.report()
@@ -160,6 +167,9 @@ The allocated memory on cuda:0: 4.00M
 - You can also pass in a model object for automatically name inference.
 
 ```python
+import torch
+from pytorch_memlab import MemReporter
+
 linear = torch.nn.Linear(1024, 1024).cuda()
 inp = torch.Tensor(512, 1024).cuda()
 # pass in a model to automatically infer the tensor names
@@ -206,6 +216,9 @@ The allocated memory on cuda:0: 10.01M
 - The reporter automatically deals with the sharing weights parameters:
 
 ```python
+import torch
+from pytorch_memlab import MemReporter
+
 linear = torch.nn.Linear(1024, 1024).cuda()
 linear2 = torch.nn.Linear(1024, 1024).cuda()
 linear2.weight = linear.weight
@@ -245,6 +258,9 @@ The allocated memory on cuda:0: 10.02M
 - You can better understand the memory layout for more complicated module:
 
 ```python
+import torch
+from pytorch_memlab import MemReporter
+
 lstm = torch.nn.LSTM(1024, 1024).cuda()
 reporter = MemReporter(lstm)
 reporter.report(verbose=True)
@@ -308,6 +324,9 @@ store both `inp` and `inp + 2`, unfortunately python only knows the existence
 of inp, so we have *2M* memory lost, which is the same size of Tensor `inp`.
 
 ```python
+import torch
+from pytorch_memlab import MemReporter
+
 linear = torch.nn.Linear(1024, 1024).cuda()
 inp = torch.Tensor(512, 1024).cuda()
 # pass in a model to automatically infer the tensor names
