@@ -227,19 +227,9 @@ def show_func(filename, trace_stat, stream=None):
     linenos = list(trace_stat['line_stat'].keys())
     start_lineno = trace_stat['source_code'][1]
 
-    if os.path.exists(filename):
-        stream.write("File: %s\n" % filename)
-        stream.write("Function: %s at line %s\n" % (func_name, start_lineno))
-        sublines = trace_stat['source_code'][0]
-    else:
-        stream.write("\n")
-        stream.write("Could not find file %s\n" % filename)
-        stream.write("Are you sure you are running this program from the same directory\n")
-        stream.write("that you ran the profiler from?\n")
-        stream.write("Continuing without the function's contents.\n")
-        # Fake empty lines so we can see the timings, if not the code.
-        nlines = max(linenos) - min(min(linenos), start_lineno) + 1
-        sublines = [''] * nlines
+    stream.write("File: %s\n" % filename)
+    stream.write("Function: %s at line %s\n" % (func_name, start_lineno))
+    sublines = trace_stat['source_code'][0]
 
     prev_max_allocated = 0
     prev_max_cached = 0
