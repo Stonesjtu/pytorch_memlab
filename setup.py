@@ -26,7 +26,7 @@ setup(
     install_requires=[
         'setuptools',
         'calmsize',
-        'ipython',
+        'IPython>=0.13',
     ],
     packages=['pytorch_memlab'],
 )
