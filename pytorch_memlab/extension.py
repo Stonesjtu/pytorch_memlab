@@ -40,7 +40,7 @@ class MemlabMagics(Magics):
             try:
                 fn = eval(name, global_ns, local_ns)
                 funcs.append(fn)
-            except Exception as e:
+            except NameError as e:
                 raise UsageError('Could not find function {!r}.\n{}: {}'.format(
                     name, e.__class__.__name__, e)
                 )
@@ -49,7 +49,7 @@ class MemlabMagics(Magics):
             code = cell
         else:
             assert args.statement is not None
-            code = "\n".join(args.statement)
+            code = '\n'.join(args.statement)
         with profiler:
             exec(compile(code, filename='<ipython>', mode='exec'), local_ns)
 
