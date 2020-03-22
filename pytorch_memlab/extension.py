@@ -8,6 +8,7 @@ from IPython.core.magic_arguments import magic_arguments, argument, parse_argstr
 from .line_profiler import LineProfiler
 from tempfile import mkstemp
 
+
 class UsageError(Exception):
     pass
 
