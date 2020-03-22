@@ -257,17 +257,17 @@ def show_func(filename, trace_stat, stream=None):
     empty = ('', '', '', '')
     header = template % ('Line #', 'Max usage', 'Peak usage', 'diff max',
                          'diff peak', 'Line Contents')
-    stream.write("\n")
+    stream.write('\n')
     stream.write(header)
-    stream.write("\n")
+    stream.write('\n')
     stream.write('=' * len(header))
-    stream.write("\n")
+    stream.write('\n')
     for lineno, line in zip(linenos, sublines):
         show_line_stat = lineno_mem.get(lineno, empty)
         max_usage, peak_usage, diff_max, diff_peak = show_line_stat
         txt = template % (lineno, max_usage, peak_usage, diff_max, diff_peak,
                           line.rstrip('\n').rstrip('\r'))
         stream.write(txt)
-        stream.write("\n")
-    stream.write("\n")
+        stream.write('\n')
+    stream.write('\n')
     stream.flush()
