@@ -130,6 +130,43 @@ func()
 
 More samples can be found in `test/test_line_profiler.py`
 
+### IPython support
+
+Make sure you have `IPython` installed, or have installed `pytorch-memlab` with
+`pip install pytorch-memlab[ipython]`.
+
+First, load the extension:
+
+```python
+%%load_ext pytorch_memlab
+```
+
+This makes the `%mlrun` and `%%mlrun` line/cell magics available for use. For
+example, in a new cell run the following to profile an entire cell
+
+```python
+%%mlrun -f func
+import torch
+from pytorch_memlab import profile, set_target_gpu
+def func():
+    net1 = torch.nn.Linear(1024, 1024).cuda(0)
+    set_target_gpu(1)
+    net2 = torch.nn.Linear(1024, 1024).cuda(1)
+    set_target_gpu(0)
+    net3 = torch.nn.Linear(1024, 1024).cuda(0)
+```
+
+Or you can invoke the profiler for a single statement on via the `%mlrun` cell
+magic.
+
+```python
+import torch
+from pytorch_memlab import profile, set_target_gpu
+def func(input_size):
+    net1 = torch.nn.Linear(input_size, 1024).cuda(0)
+%mlrun -f func func(2048)
+```
+
 
 ### Memory Reporter
 
