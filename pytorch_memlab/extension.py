@@ -25,6 +25,8 @@ class MemlabMagics(Magics):
               help='Return LineProfiler object for introspection')
     @argument('-T', '--dump-profile', metavar='OUTPUT',
               help='Dump text profile output to file')
+    @argument('-g', '--gpu', metavar='GPU_ID', default=0, type=int,
+              help='Profile memory usage of GPU ID')
     @argument('statement', nargs='*', default=None, help="""
               Code to run under profiler.
               You can omit this in cell magic mode.
@@ -47,7 +49,7 @@ class MemlabMagics(Magics):
                 raise UsageError('Could not find function {!r}.\n{}: {}'.format(
                     name, e.__class__.__name__, e)
                 )
-        profiler = LineProfiler(*funcs)
+        profiler = LineProfiler(*funcs, target_gpu=args.gpu)
         if cell is not None:
             code = cell
         else:

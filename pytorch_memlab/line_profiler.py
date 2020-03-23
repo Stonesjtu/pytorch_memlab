@@ -8,10 +8,6 @@ import torch
 from .utils import readable_size
 
 
-# profile the memory usage on gpu=0 by default
-target_gpu = 0
-
-
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
 
@@ -24,8 +20,7 @@ def set_target_gpu(gpu_id):
         - gpu_id: cuda index to profile the memory on,
         also accepts `torch.device` object.
     """
-    global target_gpu
-    target_gpu = gpu_id
+    global_line_profiler.target_gpu = gpu_id
 
 
 class LineProfiler:
@@ -51,7 +46,8 @@ class LineProfiler:
         ```
     """
 
-    def __init__(self, *functions):
+    def __init__(self, *functions, target_gpu=0):
+        self.target_gpu = target_gpu
         self.functions = []
         self.code_map = {}
         self.enabled = False
@@ -108,7 +104,7 @@ class LineProfiler:
 
         if event in ['line', 'return'] and frame.f_code in self.code_map:
             line_stat = self.code_map[frame.f_code]['line_stat']
-            with torch.cuda.device(target_gpu):
+            with torch.cuda.device(self.target_gpu):
                 allocated_memory = torch.cuda.memory_allocated()
                 cached_memory = torch.cuda.memory_cached()
                 torch.cuda.empty_cache()
