@@ -19,9 +19,12 @@ class MemlabMagics(Magics):
     @argument('--function', '-f', metavar='FUNC',
               action='append',
               default=[],
-              help="""
-              Function to profile. Can be specified multiple times
-              """)
+              help='Function to profile. Can be specified multiple times')
+    @argument('-r', '--return-profiler',
+              action='store_true',
+              help='Return LineProfiler object for introspection')
+    @argument('-T', '--dump-profile', metavar='OUTPUT',
+              help='Dump text profile output to file')
     @argument('statement', nargs='*', default=None, help="""
               Code to run under profiler.
               You can omit this in cell magic mode.
@@ -54,6 +57,13 @@ class MemlabMagics(Magics):
             exec(compile(code, filename='<ipython>', mode='exec'), local_ns)
 
         profiler.print_stats()
+
+        if args.dump_profile is not None:
+            with open(args.dump_profile, 'w') as f:
+                profiler.print_stats(stream=f)
+
+        if args.return_profiler:
+            return profiler
 
 
 def load_ipython_extension(ipython):

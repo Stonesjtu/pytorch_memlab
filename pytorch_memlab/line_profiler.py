@@ -121,22 +121,24 @@ class LineProfiler:
             self.code_map[frame.f_code]['last_lineno'] = lineno
         return
 
-    def print_stats(self):
+    def print_stats(self, stream=None):
         """Print the stat of each functions
         """
         for code, stat in self.code_map.items():
             show_func(
                 filename=code.co_filename,
                 trace_stat=stat,
+                stream=stream
             )
 
-    def print_func_stats(self, func):
+    def print_func_stats(self, func, stream=None):
         """Print the stat of a registered function"""
         code = func.__code__
         if code in self.code_map:
             show_func(
                 filename=code.co_filename,
                 trace_stat=self.code_map[code],
+                stream=stream
             )
 
 
