@@ -27,6 +27,7 @@ class MemlabMagics(Magics):
               help='Dump text profile output to file')
     @argument('-g', '--gpu', metavar='GPU_ID', default=0, type=int,
               help='Profile memory usage of GPU ID')
+    @argument('-q', '--quiet', action='store_true', help='Don\'t print out profile results')
     @argument('statement', nargs='*', default=None, help="""
               Code to run under profiler.
               You can omit this in cell magic mode.
@@ -58,7 +59,8 @@ class MemlabMagics(Magics):
         with profiler:
             exec(compile(code, filename='<ipython>', mode='exec'), local_ns)
 
-        profiler.print_stats()
+        if not args.quiet:
+            profiler.print_stats()
 
         if args.dump_profile is not None:
             with open(args.dump_profile, 'w') as f:
