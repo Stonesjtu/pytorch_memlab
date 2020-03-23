@@ -46,8 +46,8 @@ class LineProfiler:
         ```
     """
 
-    def __init__(self, *functions, target_gpu=0):
-        self.target_gpu = target_gpu
+    def __init__(self, *functions, **kwargs):
+        self.target_gpu = kwargs.get('target_gpu', 0)
         self.functions = []
         self.code_map = {}
         self.enabled = False
