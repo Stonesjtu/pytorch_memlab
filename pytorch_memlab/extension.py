@@ -16,22 +16,35 @@ class UsageError(Exception):
 @magics_class
 class MemlabMagics(Magics):
     @magic_arguments()
-    @argument('--function', '-f', metavar='FUNC',
+    @argument('--function',
+              '-f',
+              metavar='FUNC',
               action='append',
               default=[],
-              help='Function to profile. Can be specified multiple times')
-    @argument('-r', '--return-profiler',
+              help="""Function to profile. Can be specified multiple times to profile multiple
+                   functions""")
+    @argument('-r',
+              '--return-profiler',
               action='store_true',
               help='Return LineProfiler object for introspection')
-    @argument('-T', '--dump-profile', metavar='OUTPUT',
+    @argument('-T',
+              '--dump-profile',
+              metavar='OUTPUT',
               help='Dump text profile output to file')
-    @argument('-g', '--gpu', metavar='GPU_ID', default=0, type=int,
-              help='Profile memory usage of GPU ID')
-    @argument('-q', '--quiet', action='store_true', help='Don\'t print out profile results')
-    @argument('statement', nargs='*', default=None, help="""
-              Code to run under profiler.
-              You can omit this in cell magic mode.
-              """)
+    @argument('-g',
+              '--gpu',
+              metavar='GPU_ID',
+              default=0,
+              type=int,
+              help='Profile memory usage of this GPU')
+    @argument('-q',
+              '--quiet',
+              action='store_true',
+              help='Don\'t print out profile results')
+    @argument('statement',
+              nargs='*',
+              default=None,
+              help='Code to run under profiler. You can omit this in cell magic mode.')
     @line_cell_magic
     @needs_local_scope
     def mlrun(self, line=None, cell=None, local_ns=None):
