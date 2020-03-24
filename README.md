@@ -174,6 +174,8 @@ See `%mlrun?` for help on what arguments are supported. You can set the GPU
 device to profile, dump profiling results to a file, and return the
 `LineProfiler` object for post-profile inspection.
 
+Find out more by checking out the [demo Jupyter notebook](./demo.ipynb)
+
 
 ### Memory Reporter
 
