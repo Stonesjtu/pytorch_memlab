@@ -6,10 +6,13 @@ pytorch_memlab
 
 A simple and accurate **CUDA** memory management laboratory for pytorch,
 it consists of different parts about the memory:
-  - A `line_profiler` style CUDA memory profiler with simple API.
-  - A reporter to inspect tensors occupying the CUDA memory.
-  - An interesting feature to temporarily move all the CUDA tensors into
-  CPU memory for courtesy, and of course the backward transferring.
+
+  - [A `line_profiler` style CUDA memory profiler with simple API.](#memory-profiler)
+  - [A reporter to inspect tensors occupying the CUDA memory.](#memory-reporter)
+  - [An interesting feature to temporarily move all the CUDA tensors into
+    CPU memory for courtesy, and of course the backward transferring.](#courtesy)
+  - [IPython support through `%mlrun`/`%%mlrun` line/cell magic
+    commands.](#ipython-support)
 
 Installation
 -----
@@ -129,6 +132,49 @@ func()
 
 
 More samples can be found in `test/test_line_profiler.py`
+
+### IPython support
+
+Make sure you have `IPython` installed, or have installed `pytorch-memlab` with
+`pip install pytorch-memlab[ipython]`.
+
+First, load the extension:
+
+```python
+%%load_ext pytorch_memlab
+```
+
+This makes the `%mlrun` and `%%mlrun` line/cell magics available for use. For
+example, in a new cell run the following to profile an entire cell
+
+```python
+%%mlrun -f func
+import torch
+from pytorch_memlab import profile, set_target_gpu
+def func():
+    net1 = torch.nn.Linear(1024, 1024).cuda(0)
+    set_target_gpu(1)
+    net2 = torch.nn.Linear(1024, 1024).cuda(1)
+    set_target_gpu(0)
+    net3 = torch.nn.Linear(1024, 1024).cuda(0)
+```
+
+Or you can invoke the profiler for a single statement on via the `%mlrun` cell
+magic.
+
+```python
+import torch
+from pytorch_memlab import profile, set_target_gpu
+def func(input_size):
+    net1 = torch.nn.Linear(input_size, 1024).cuda(0)
+%mlrun -f func func(2048)
+```
+
+See `%mlrun?` for help on what arguments are supported. You can set the GPU
+device to profile, dump profiling results to a file, and return the
+`LineProfiler` object for post-profile inspection.
+
+Find out more by checking out the [demo Jupyter notebook](./demo.ipynb)
 
 
 ### Memory Reporter

@@ -8,10 +8,6 @@ import torch
 from .utils import readable_size
 
 
-# profile the memory usage on gpu=0 by default
-target_gpu = 0
-
-
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
 
@@ -24,8 +20,7 @@ def set_target_gpu(gpu_id):
         - gpu_id: cuda index to profile the memory on,
         also accepts `torch.device` object.
     """
-    global target_gpu
-    target_gpu = gpu_id
+    global_line_profiler.target_gpu = gpu_id
 
 
 class LineProfiler:
@@ -51,7 +46,8 @@ class LineProfiler:
         ```
     """
 
-    def __init__(self, *functions):
+    def __init__(self, *functions, **kwargs):
+        self.target_gpu = kwargs.get('target_gpu', 0)
         self.functions = []
         self.code_map = {}
         self.enabled = False
@@ -108,7 +104,7 @@ class LineProfiler:
 
         if event in ['line', 'return'] and frame.f_code in self.code_map:
             line_stat = self.code_map[frame.f_code]['line_stat']
-            with torch.cuda.device(target_gpu):
+            with torch.cuda.device(self.target_gpu):
                 allocated_memory = torch.cuda.memory_allocated()
                 cached_memory = torch.cuda.memory_cached()
                 torch.cuda.empty_cache()
@@ -121,22 +117,24 @@ class LineProfiler:
             self.code_map[frame.f_code]['last_lineno'] = lineno
         return
 
-    def print_stats(self):
+    def print_stats(self, stream=None):
         """Print the stat of each functions
         """
         for code, stat in self.code_map.items():
             show_func(
                 filename=code.co_filename,
                 trace_stat=stat,
+                stream=stream
             )
 
-    def print_func_stats(self, func):
+    def print_func_stats(self, func, stream=None):
         """Print the stat of a registered function"""
         code = func.__code__
         if code in self.code_map:
             show_func(
                 filename=code.co_filename,
                 trace_stat=self.code_map[code],
+                stream=stream
             )
 
 
@@ -227,19 +225,9 @@ def show_func(filename, trace_stat, stream=None):
     linenos = list(trace_stat['line_stat'].keys())
     start_lineno = trace_stat['source_code'][1]
 
-    if os.path.exists(filename):
-        stream.write("File: %s\n" % filename)
-        stream.write("Function: %s at line %s\n" % (func_name, start_lineno))
-        sublines = trace_stat['source_code'][0]
-    else:
-        stream.write("\n")
-        stream.write("Could not find file %s\n" % filename)
-        stream.write("Are you sure you are running this program from the same directory\n")
-        stream.write("that you ran the profiler from?\n")
-        stream.write("Continuing without the function's contents.\n")
-        # Fake empty lines so we can see the timings, if not the code.
-        nlines = max(linenos) - min(min(linenos), start_lineno) + 1
-        sublines = [''] * nlines
+    stream.write("File: %s\n" % filename)
+    stream.write("Function: %s at line %s\n" % (func_name, start_lineno))
+    sublines = trace_stat['source_code'][0]
 
     prev_max_allocated = 0
     prev_max_cached = 0
@@ -267,17 +255,17 @@ def show_func(filename, trace_stat, stream=None):
     empty = ('', '', '', '')
     header = template % ('Line #', 'Max usage', 'Peak usage', 'diff max',
                          'diff peak', 'Line Contents')
-    stream.write("\n")
+    stream.write('\n')
     stream.write(header)
-    stream.write("\n")
+    stream.write('\n')
     stream.write('=' * len(header))
-    stream.write("\n")
+    stream.write('\n')
     for lineno, line in zip(linenos, sublines):
         show_line_stat = lineno_mem.get(lineno, empty)
         max_usage, peak_usage, diff_max, diff_peak = show_line_stat
         txt = template % (lineno, max_usage, peak_usage, diff_max, diff_peak,
                           line.rstrip('\n').rstrip('\r'))
         stream.write(txt)
-        stream.write("\n")
-    stream.write("\n")
+        stream.write('\n')
+    stream.write('\n')
     stream.flush()

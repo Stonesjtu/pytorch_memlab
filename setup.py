@@ -27,5 +27,8 @@ setup(
         'setuptools',
         'calmsize',
     ],
+    extras_require={
+        'ipython': ['IPython>=0.13'],
+    },
     packages=['pytorch_memlab'],
 )
