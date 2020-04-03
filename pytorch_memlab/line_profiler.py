@@ -78,6 +78,7 @@ class LineProfiler:
             self.register_callback()
 
     def __enter__(self):
+        torch.cuda.empty_cache()
         self.enable()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
