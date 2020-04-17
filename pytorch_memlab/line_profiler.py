@@ -126,7 +126,7 @@ class LineProfiler:
             print('No data collected.')
             return
 
-        records = records = self.records()
+        records = self.records().groupby(axis=0, level=[0, 1]).max()
         columns = [tuple(c.split('.')) for c in columns]
         assert all(len(c) == 3 for c in columns), 'Each column name should have three dot-separated parts'
         assert all(c in records.columns for c in columns), 'The column names should come from torch.cuda.memory_stat()\'s output'
