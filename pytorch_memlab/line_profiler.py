@@ -103,6 +103,9 @@ class LineProfiler:
                     'codehash': codehash, 
                     'line': last_line,
                     **torch.cuda.memory_stats(self.target_gpu)})
+                #TODO: This causes problems when profiling more than one function, as 
+                # the inner function can reset the stats for the outer function. Hrm.
+                # Might be nothing for it but track them here.
                 torch.cuda.reset_peak_memory_stats()
                 torch.cuda.reset_accumulated_memory_stats()
 
