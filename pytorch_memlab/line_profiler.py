@@ -120,11 +120,12 @@ class LineProfiler:
         records.columns = pd.MultiIndex.from_tuples([c.split('.') for c in records.columns])
         return records
 
-    def print(self, columns=[('active_bytes', 'all', 'peak'), ('reserved_bytes', 'all', 'peak')]):
+    def print(self, columns=['active_bytes.all.peak', 'reserved_bytes.all.peak']):
         if len(self._records) == 0:
             print('No data collected.')
             return
 
+        columns = [tuple(c.split('.')) for c in columns]
         formatted = self.records().loc[:, columns].applymap(readable_size)
 
         for codehash, info in self.codes.items():
