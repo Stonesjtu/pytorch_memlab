@@ -438,6 +438,8 @@ open source community.
 
 ## CHANGES
 
+##### 0.1.0 (2020-04-17)
+  - Add ipython magic support (#8)
 ##### 0.0.4 (2019-10-08)
   - Add gpu switch for line-profiler(#2)
   - Add device filter for reporter
