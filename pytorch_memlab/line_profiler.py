@@ -143,11 +143,11 @@ class LineProfiler:
             lines = pd.DataFrame.from_dict({'line': range(startline, startline+len(lines)), 'code': lines})
             lines.columns = pd.MultiIndex.from_product([lines.columns, [''], ['']])
             
-            content = pd.merge(records.loc[qualname], lines, right_on='line', left_index=True, how='right').fillna(0)
+            content = pd.merge(records.loc[qualname], lines, right_on='line', left_index=True, how='right')
             
             style = content.style
             for c in records.columns:
-                style = style.bar([c], color='#5fba7d', width=99, vmax=maxes[c])
+                style = style.bar([c], color='#5fba7d', width=99, vmin=0, vmax=maxes[c])
             chunk = (style
                         .format({c: readable_size for c in bytecols})
                         .set_properties(subset=['code'], **{'text-align': 'left', 'white-space': 'pre', 'font-family': 'monospace'})
