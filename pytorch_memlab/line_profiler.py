@@ -46,9 +46,8 @@ class LineProfiler:
         ```
     """
 
-    def __init__(self, *functions, **kwargs):
-        self.target_gpu = kwargs.get('target_gpu', 0)
-        self.functions = []
+    def __init__(self, *functions, target_gpu=0, **kwargs):
+        self.target_gpu = target_gpu
         self.code_map = {}
         self.enabled = False
         for func in functions:
@@ -69,7 +68,6 @@ class LineProfiler:
             # probable memory leak if holding this ref
             self.code_map[code]['func'] = func
             self.code_map[code]['func_name'] = func.__name__
-            self.functions.append(func)
             self.code_map[code]['source_code'] = inspect.getsourcelines(func)
             self.code_map[code]['last_lineno'] = -1
 
@@ -85,7 +83,7 @@ class LineProfiler:
 
     def register_callback(self):
         """Register the trace_callback only on demand"""
-        if self.functions:
+        if self.code_map:
             sys.settrace(self.trace_callback)
 
     def enable(self):
