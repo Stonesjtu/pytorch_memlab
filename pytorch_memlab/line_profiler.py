@@ -151,6 +151,7 @@ class LineProfiler:
             chunk = (style
                         .format({c: readable_size for c in bytecols})
                         .set_properties(subset=['code'], **{'text-align': 'left', 'white-space': 'pre', 'font-family': 'monospace'})
+                        .set_table_styles([dict(selector='th', props=[('text-align', 'left')])]) 
                         .render())
             chunks.append((qualname, chunk))
 
