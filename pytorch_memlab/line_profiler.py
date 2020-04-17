@@ -7,6 +7,8 @@ from functools import wraps
 import torch
 from .utils import readable_size
 
+def summarize(codes, records):
+    pass
 
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
@@ -58,13 +60,13 @@ class LineProfiler:
         """ Record line profiling information for the given Python function.
         """
         try:
-            code = func.__code__
+            codehash = hash(func.__code__)
         except AttributeError:
             import warnings
             warnings.warn("Could not extract a code object for the object %r" % (func,))
             return
-        if code not in self.codes:
-            self.codes[code] = {'lineno': -1, 'func': func}
+        if codehash not in self.codes:
+            self.codes[codehash] = {'lineno': -1, 'func': func}
 
         # re-register the newer trace_callback
         if self.enabled:
@@ -96,19 +98,20 @@ class LineProfiler:
         if event == 'call':
             return self.trace_callback
 
-        if event in ['line', 'return'] and frame.f_code in self.codes:
-            last_lineno = self.codes[frame.f_code]['lineno']
+        codehash = hash(frame.f_code)
+        if event in ['line', 'return'] and codehash in self.codes:
+            last_lineno = self.codes[codehash]['lineno']
             
             with torch.cuda.device(self.target_gpu):
                 self.records.append({
-                    'code': frame.f_code, 
+                    'codehash': codehash, 
                     'last_lineno': last_lineno,
                     **torch.cuda.memory_stats(self.target_gpu)})
                 torch.cuda.reset_peak_memory_stats()
                 torch.cuda.reset_accumulated_memory_stats()
 
             lineno = last_lineno + 1 if event == 'return' else frame.f_lineno
-            self.codes[frame.f_code]['lineno'] = lineno
+            self.codes[codehash]['lineno'] = lineno
 
         return
 
