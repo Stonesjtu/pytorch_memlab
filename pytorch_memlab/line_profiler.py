@@ -126,7 +126,10 @@ class LineProfiler:
             return
 
         columns = [tuple(c.split('.')) for c in columns]
-        formatted = self.records().loc[:, columns].applymap(readable_size)
+        formatted = self.records().loc[:, columns]
+        
+        bytecols = formatted.columns.get_level_values(0).str.contains('bytes')
+        formatted.loc[:, bytecols] = formatted.loc[:, bytecols].applymap(readable_size)
 
         for codehash, info in self.codes.items():
             qualname = info['func'].__qualname__
