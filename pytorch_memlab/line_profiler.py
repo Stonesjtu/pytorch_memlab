@@ -121,6 +121,10 @@ class LineProfiler:
         return records
 
     def print(self, columns=[('active_bytes', 'all', 'peak'), ('reserved_bytes', 'all', 'peak')]):
+        if len(self._records) == 0:
+            print('No data collected.')
+            return
+
         formatted = self.records().loc[:, columns].applymap(readable_size)
 
         for codehash, info in self.codes.items():

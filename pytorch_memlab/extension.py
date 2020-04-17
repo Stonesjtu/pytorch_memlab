@@ -27,10 +27,6 @@ class MemlabMagics(Magics):
               '--return-profiler',
               action='store_true',
               help='Return LineProfiler object for introspection')
-    @argument('-T',
-              '--dump-profile',
-              metavar='OUTPUT',
-              help='Dump text profile output to file')
     @argument('-g',
               '--gpu',
               metavar='GPU_ID',
@@ -73,11 +69,7 @@ class MemlabMagics(Magics):
             exec(compile(code, filename='<ipython>', mode='exec'), local_ns)
 
         if not args.quiet:
-            profiler.print_stats()
-
-        if args.dump_profile is not None:
-            with open(args.dump_profile, 'w') as f:
-                profiler.print_stats(stream=f)
+            profiler.print()
 
         if args.return_profiler:
             return profiler
