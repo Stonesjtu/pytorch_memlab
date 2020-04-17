@@ -7,7 +7,6 @@ from IPython.core.magic import (
 from IPython.core.magic_arguments import magic_arguments, argument, parse_argstring
 from .line_profiler import LineProfiler
 from tempfile import mkstemp
-from IPython.display import display
 
 
 class UsageError(Exception):
@@ -23,6 +22,13 @@ class MemlabMagics(Magics):
               action='append',
               default=[],
               help="""Function to profile. Can be specified multiple times to profile multiple
+                   functions""")
+    @argument('--column',
+              '-c',
+              metavar='COLS',
+              action='append',
+              default=[],
+              help="""Columns to display. Can be specified multiple times to profile multiple
                    functions""")
     @argument('-r',
               '--return-profiler',
@@ -70,7 +76,7 @@ class MemlabMagics(Magics):
             exec(compile(code, filename='<ipython>', mode='exec'), local_ns)
 
         if not args.quiet:
-            display(profiler.print())
+            profiler.print(args.column)
 
         if args.return_profiler:
             return profiler

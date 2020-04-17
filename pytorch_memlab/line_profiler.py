@@ -4,7 +4,7 @@ import inspect
 import pandas as pd
 import torch
 from .utils import readable_size
-from IPython.display import HTML
+from IPython.display import HTML, display
 
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
@@ -126,7 +126,11 @@ class LineProfiler:
             print('No data collected.')
             return
 
-        records = self.records().loc[:, [tuple(c.split('.')) for c in columns]]
+        records = records = self.records()
+        columns = [tuple(c.split('.')) for c in columns]
+        assert all(len(c) == 3 for c in columns), 'Each column name should have three dot-separated parts'
+        assert all(c in records.columns for c in columns), 'The column names should come from torch.cuda.memory_stat()\'s output'
+        records = records.loc[:, columns]
 
         bytecols = records.columns[records.columns.get_level_values(0).str.contains('byte')]
         maxes = records.max()
@@ -151,7 +155,7 @@ class LineProfiler:
             chunks.append((qualname, chunk))
 
         template = '<h3><span style="font-family: monospace">{q}</span></h3><div>{c}</div>'
-        return HTML('\n'.join(template.format(q=q, c=c) for q, c in chunks))
+        display(HTML('\n'.join(template.format(q=q, c=c) for q, c in chunks)))
 
 
 global_line_profiler = LineProfiler()
