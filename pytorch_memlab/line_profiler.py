@@ -1,15 +1,9 @@
-import os
 import sys
 import inspect
-from collections import defaultdict
-from functools import wraps
 
 import pandas as pd
 import torch
 from .utils import readable_size
-
-def summarize(codes, records):
-    pass
 
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
@@ -147,7 +141,6 @@ class LineProfiler:
 
 global_line_profiler = LineProfiler()
 global_line_profiler.enable()
-
 
 def profile(func, **kwargs):
     """Profile the CUDA memory usage of target function line by line
