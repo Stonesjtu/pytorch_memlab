@@ -48,7 +48,8 @@ class LineProfiler:
 
     def __init__(self, *functions, target_gpu=0, **kwargs):
         self.target_gpu = target_gpu
-        self.code_map = {}
+        self.codes = {}
+        self.records = []
         self.enabled = False
         for func in functions:
             self.add_function(func)
@@ -62,14 +63,8 @@ class LineProfiler:
             import warnings
             warnings.warn("Could not extract a code object for the object %r" % (func,))
             return
-        if code not in self.code_map:
-            self.code_map[code] = {}
-            self.code_map[code]['line_stat'] = defaultdict(list)
-            # probable memory leak if holding this ref
-            self.code_map[code]['func'] = func
-            self.code_map[code]['func_name'] = func.__name__
-            self.code_map[code]['source_code'] = inspect.getsourcelines(func)
-            self.code_map[code]['last_lineno'] = -1
+        if code not in self.codes:
+            self.codes[code] = {'lineno': -1, 'func': func}
 
         # re-register the newer trace_callback
         if self.enabled:
@@ -84,7 +79,7 @@ class LineProfiler:
 
     def register_callback(self):
         """Register the trace_callback only on demand"""
-        if self.code_map:
+        if self.codes:
             sys.settrace(self.trace_callback)
 
     def enable(self):
@@ -101,40 +96,39 @@ class LineProfiler:
         if event == 'call':
             return self.trace_callback
 
-        if event in ['line', 'return'] and frame.f_code in self.code_map:
-            line_stat = self.code_map[frame.f_code]['line_stat']
+        if event in ['line', 'return'] and frame.f_code in self.codes:
+            last_lineno = self.codes[frame.f_code]['lineno']
+            
             with torch.cuda.device(self.target_gpu):
-                allocated_memory = torch.cuda.memory_allocated()
-                cached_memory = torch.cuda.memory_cached()
-                torch.cuda.empty_cache()
-            if event == 'return':
-                lineno = max(line_stat.keys()) + 1
-            else:
-                lineno = frame.f_lineno
-            last_lineno = self.code_map[frame.f_code]['last_lineno']
-            line_stat[last_lineno].append((allocated_memory, cached_memory))
-            self.code_map[frame.f_code]['last_lineno'] = lineno
+                self.records.append({
+                    'code': frame.f_code, 
+                    'last_lineno': last_lineno,
+                    **torch.cuda.memory_stats(self.target_gpu)})
+                torch.cuda.reset_peak_memory_stats()
+                torch.cuda.reset_accumulated_memory_stats()
+
+            lineno = last_lineno + 1 if event == 'return' else frame.f_lineno
+            self.codes[frame.f_code]['lineno'] = lineno
+
         return
 
     def print_stats(self, stream=None):
         """Print the stat of each functions
         """
-        for code, stat in self.code_map.items():
+        for code, stat in self.codes.items():
             show_func(
                 filename=code.co_filename,
                 trace_stat=stat,
-                stream=stream
-            )
+                stream=stream)
 
     def print_func_stats(self, func, stream=None):
         """Print the stat of a registered function"""
         code = func.__code__
-        if code in self.code_map:
+        if code in self.codess_map:
             show_func(
                 filename=code.co_filename,
-                trace_stat=self.code_map[code],
-                stream=stream
-            )
+                trace_stat=self.linenos[code],
+                stream=stream)
 
 
 global_line_profiler = LineProfiler()
