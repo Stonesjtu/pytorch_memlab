@@ -4,6 +4,7 @@ import inspect
 import pandas as pd
 import torch
 from .utils import readable_size
+from IPython.display import HTML
 
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
@@ -125,26 +126,32 @@ class LineProfiler:
             print('No data collected.')
             return
 
-        columns = [tuple(c.split('.')) for c in columns]
-        formatted = self.records().loc[:, columns]
-        
-        bytecols = formatted.columns.get_level_values(0).str.contains('bytes')
-        formatted.loc[:, bytecols] = formatted.loc[:, bytecols].applymap(readable_size)
+        records = self.records().loc[:, [tuple(c.split('.')) for c in columns]]
 
+        bytecols = records.columns[records.columns.get_level_values(0).str.contains('byte')]
+        maxes = records.max()
+
+        chunks = []
         for codehash, info in self.codes.items():
             qualname = info['func'].__qualname__
             
             lines, startline = inspect.getsourcelines(info['func'])
-            maxlen = max(map(len, lines))
-            lines = pd.DataFrame.from_dict({
-                        'line': range(startline, startline+len(lines)),
-                        '': [f'{{:{maxlen}s}}'.format(l.rstrip('\n\r')) for l in lines]})
+            lines = pd.DataFrame.from_dict({'line': range(startline, startline+len(lines)), 'code': lines})
             lines.columns = pd.MultiIndex.from_product([lines.columns, [''], ['']])
             
-            content = pd.merge(formatted.loc[qualname], lines, right_on='line', left_index=True, how='right').fillna('')
+            content = pd.merge(records.loc[qualname], lines, right_on='line', left_index=True, how='right').fillna(0)
             
-            print(content.to_string(index=False, col_space=8))
-            print('\n')
+            style = content.style
+            for c in records.columns:
+                style = style.bar([c], color='#5fba7d', width=99, vmax=maxes[c])
+            chunk = (style
+                        .format({c: readable_size for c in bytecols})
+                        .set_properties(subset=['code'], **{'text-align': 'left', 'white-space': 'pre', 'font-family': 'monospace'})
+                        .render())
+            chunks.append((qualname, chunk))
+
+        template = '<h3><span style="font-family: monospace">{q}</span></h3><div>{c}</div>'
+        return HTML('\n'.join(template.format(q=q, c=c) for q, c in chunks))
 
 
 global_line_profiler = LineProfiler()

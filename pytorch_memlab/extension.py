@@ -7,6 +7,7 @@ from IPython.core.magic import (
 from IPython.core.magic_arguments import magic_arguments, argument, parse_argstring
 from .line_profiler import LineProfiler
 from tempfile import mkstemp
+from IPython.display import display
 
 
 class UsageError(Exception):
@@ -69,7 +70,7 @@ class MemlabMagics(Magics):
             exec(compile(code, filename='<ipython>', mode='exec'), local_ns)
 
         if not args.quiet:
-            profiler.print()
+            display(profiler.print())
 
         if args.return_profiler:
             return profiler
