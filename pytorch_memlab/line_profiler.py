@@ -167,7 +167,7 @@ class LineProfiler:
         records.columns = pd.MultiIndex.from_tuples([c.split('.') for c in records.columns])
         return records
 
-    def print_stats(self, columns=['active_bytes.all.peak', 'reserved_bytes.all.peak'], func=None, stream=None):
+    def print_stats(self, func=None, columns=['active_bytes.all.peak', 'reserved_bytes.all.peak'], stream=None):
         if len(self._raw) == 0:
             print('No data collected.')
             return
