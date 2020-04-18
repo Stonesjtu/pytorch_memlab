@@ -2,3 +2,4 @@ calmsize
 torch
 future
 ipython
+pandas
