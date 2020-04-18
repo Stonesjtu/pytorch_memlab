@@ -173,8 +173,9 @@ class LineProfiler:
         return records
 
     def print_stats(self, func=None, columns=['active_bytes.all.peak', 'reserved_bytes.all.peak'], stream=None):
+        stream = stream or sys.stdout
         if len(self._raw) == 0:
-            print('No data collected.')
+            stream.write('No data collected.')
             return
 
         records = self.records().groupby(axis=0, level=[0, 1]).max()
