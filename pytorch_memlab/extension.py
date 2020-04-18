@@ -29,7 +29,8 @@ class MemlabMagics(Magics):
               action='append',
               default=[],
               help="""Columns to display. Can be specified multiple times to profile multiple
-                   functions""")
+                   functions. See the Torch CUDA spec at 
+                   https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats for details.""")
     @argument('-r',
               '--return-profiler',
               action='store_true',
