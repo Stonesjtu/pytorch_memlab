@@ -146,9 +146,14 @@ class LineProfiler:
 
         for row, record in enumerate(self._raw):
             if record['prev'] == -1:
+                # No previous data to accumulate from
                 continue
             if record['prev'] == row-1:
+                # Previous record was the previous line, so no need to accumulate anything
                 continue
+
+            # Another profiled function has been called since the last record, so we need to
+            # accumulate the allocated/freed/peaks of the intervening records into this one. 
             acc_refined[row] = acc_raw[record['prev']+1:row+1].sum(0)
             peak_refined[row] = peak_raw[record['prev']+1:row+1].max(0)
 
