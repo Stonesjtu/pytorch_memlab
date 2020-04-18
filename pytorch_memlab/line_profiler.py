@@ -10,6 +10,8 @@ from .utils import readable_size
 # Seaborn's `muted` color cycle
 COLORS = ['#4878d0', '#ee854a', '#6acc64', '#d65f5f', '#956cb4', '#8c613c', '#dc7ec0', '#797979', '#d5bb67', '#82c6e2']
 
+DEFAULT_COLUMNS = ['active_bytes.all.peak', 'reserved_bytes.all.peak']
+
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
 
@@ -167,25 +169,31 @@ class LineProfiler:
         qualnames = {codehash: info['func'].__qualname__ for codehash, info in self._codes.items()}
         records = (self._refined_line_records()
                         .assign(qualname=lambda df: df.codehash.map(qualnames))
-                        .set_index(['qualname', 'line'])
+                        .set_index(['qualname', 'line', 'prev'])
                         .drop(['codehash', 'num_alloc_retries', 'num_ooms'], 1))
         records.columns = pd.MultiIndex.from_tuples([c.split('.') for c in records.columns])
         return records
 
-    def print_stats(self, func=None, columns=['active_bytes.all.peak', 'reserved_bytes.all.peak'], stream=None):
+    def _record_subset(self, func, columns):
+        records = self.records().groupby(axis=0, level=[0, 1]).max()
+        columns = [tuple(c.split('.')) for c in columns]
+        if not all(len(c) == 3 for c in columns):
+            raise ValueError('Each column name should have three dot-separated parts')
+        if not all(c in records.columns for c in columns):
+            raise ValueError(f'The column names should be fields of torch.cuda.memory_stat(). Options are: {", ".join(".".join(c) for c in records.columns.tolist())}')
+        records = records.loc[:, columns]
+        if func:
+            records = records.loc[[func]]
+        return records
+
+
+    def print_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=None):
         stream = stream or sys.stdout
         if len(self._raw_records) == 0:
             stream.write('No data collected.')
             return
 
-        records = self.records().groupby(axis=0, level=[0, 1]).max()
-        columns = [tuple(c.split('.')) for c in columns]
-        assert all(len(c) == 3 for c in columns), 'Each column name should have three dot-separated parts'
-        assert all(c in records.columns for c in columns), 'The column names should come from torch.cuda.memory_stat()\'s output'
-        records = records.loc[:, columns]
-        if func:
-            records = records.loc[[func]]
-
+        records = self._record_subset(func, columns)
         bytecols = records.columns[records.columns.get_level_values(0).str.contains('byte')]
         maxes = records.max()
 

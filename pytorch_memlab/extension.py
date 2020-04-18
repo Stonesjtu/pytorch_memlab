@@ -5,7 +5,7 @@ from IPython.core.magic import (
     needs_local_scope,
 )
 from IPython.core.magic_arguments import magic_arguments, argument, parse_argstring
-from .line_profiler import LineProfiler
+from .line_profiler import LineProfiler, DEFAULT_COLUMNS
 from tempfile import mkstemp
 
 
@@ -23,6 +23,7 @@ class MemlabMagics(Magics):
               default=[],
               help="""Function to profile. Can be specified multiple times to profile multiple
                    functions""")
+    #TODO: How to provide default columns but also let users override them with a possibly empty list?
     @argument('--column',
               '-c',
               metavar='COLS',
@@ -81,7 +82,7 @@ class MemlabMagics(Magics):
             exec(compile(code, filename='<ipython>', mode='exec'), local_ns)
 
         if not args.quiet:
-            profiler.print_stats(args.column)
+            profiler.print_stats(columns=args.column)
 
         if args.dump_profile is not None:
             with open(args.dump_profile, 'w') as f:
