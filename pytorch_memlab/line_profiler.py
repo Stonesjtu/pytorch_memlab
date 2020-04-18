@@ -7,6 +7,9 @@ from .utils import readable_size
 from IPython.display import HTML, display
 from functools import wraps
 
+# Seaborn's `muted` color cycle
+COLORS = ['#4878d0', '#ee854a', '#6acc64', '#d65f5f', '#956cb4', '#8c613c', '#dc7ec0', '#797979', '#d5bb67', '#82c6e2']
+
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
 
@@ -191,8 +194,8 @@ class LineProfiler:
             content = pd.merge(records.loc[qualname], lines, right_on='line', left_index=True, how='right')
             
             style = content.style
-            for c in records.columns:
-                style = style.bar([c], color='#5fba7d', width=99, vmin=0, vmax=maxes[c])
+            for i, c in enumerate(records.columns):
+                style = style.bar([c], color=COLORS[i % len(COLORS)], width=99, vmin=0, vmax=maxes[c])
             chunk = (style
                         .format({c: readable_size for c in bytecols})
                         .set_properties(subset=['code'], **{'text-align': 'left', 'white-space': 'pre', 'font-family': 'monospace'})
@@ -203,7 +206,7 @@ class LineProfiler:
         template = '<h3><span style="font-family: monospace">{q}</span></h3><div>{c}</div>'
         html = '\n'.join(template.format(q=q, c=c) for q, c in chunks)
         if stream is None:
-            display(HTML())
+            display(HTML(html))
         else:
             stream.write(html)
 
