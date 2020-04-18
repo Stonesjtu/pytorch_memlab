@@ -1,6 +1,6 @@
 import sys
 import inspect
-
+import numpy as np
 import pandas as pd
 import torch
 from .utils import readable_size
@@ -47,7 +47,7 @@ class LineProfiler:
     def __init__(self, *functions, target_gpu=0, **kwargs):
         self.target_gpu = target_gpu
         self._codes = {}
-        self._records = []
+        self._raw = []
         self.enabled = False
         for func in functions:
             self.add_function(func)
@@ -111,28 +111,52 @@ class LineProfiler:
         if event in ['line', 'return'] and codehash in self._codes:
             codeinfo = self._codes[codehash]
             with torch.cuda.device(self.target_gpu):
-                self._records.append({
+                self._raw.append({
                     'codehash': codehash, 
                     'line': codeinfo['prev_line'],
+                    'prev': codeinfo['prev_record'],
                     **torch.cuda.memory_stats(self.target_gpu)})
-                #TODO: This causes problems when profiling more than one function, as 
-                # the inner function can reset the stats for the outer function. Hrm.
-                # Might be nothing for it but track them here.
                 self._reset_cuda_stats()
 
             if event == 'line':
                 codeinfo['prev_line'] = frame.f_lineno
-                codeinfo['prev_record'] = len(self._records)
+                codeinfo['prev_record'] = len(self._raw)-1
             elif event == 'return':
                 codeinfo['prev_line'] = codeinfo['first_line']
                 codeinfo['prev_record'] = -1
             else:
                 assert False
 
+    def _refined(self):
+        # The records are line-by-line, but the stats we want to report are over periods.
+        # So we need to accumulate some stuff.
+        # Peak stats are the maximum since `prev`
+        # Allocated/freed stats are the sum since `prev` 
+
+        # We'll do this in numpy because indexing lots of rows and columns in pandas is dog-slow. 
+        raw = pd.DataFrame(self._raw)
+        acc_mask = raw.columns.str.match(r'.*(allocated|freed)$')
+        peak_mask = raw.columns.str.match(r'.*(peak)$')
+        acc_raw, peak_raw = raw.loc[:, acc_mask].values, raw.loc[:, peak_mask].values
+        acc_refined, peak_refined = acc_raw.copy(), peak_raw.copy()
+
+        for i, r in enumerate(self._raw):
+            if r['prev'] == -1:
+                continue
+            if r['prev'] == i-1:
+                continue
+            acc_refined[i] = acc_raw[r['prev']+1:i+1].sum(0)
+            peak_refined[i] = peak_raw[r['prev']+1:i+1].max(0)
+
+        refined = raw.copy()
+        refined.loc[:, acc_mask] = acc_refined
+        refined.loc[:, peak_mask] = peak_refined    
+        return refined
+
     def records(self):
         # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
         qualnames = {codehash: info['func'].__qualname__ for codehash, info in self._codes.items()}
-        records = (pd.DataFrame(self._records)
+        records = (self._refined()
                         .assign(qualname=lambda df: df.codehash.map(qualnames))
                         .set_index(['qualname', 'line'])
                         .drop(['codehash', 'num_alloc_retries', 'num_ooms'], 1))
@@ -140,7 +164,7 @@ class LineProfiler:
         return records
 
     def print(self, columns=['active_bytes.all.peak', 'reserved_bytes.all.peak']):
-        if len(self._records) == 0:
+        if len(self._raw) == 0:
             print('No data collected.')
             return
 
