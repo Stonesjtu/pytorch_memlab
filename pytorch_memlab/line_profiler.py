@@ -256,7 +256,7 @@ def profile(func, **kwargs):
     global_line_profiler.add_function(func)
 
     def print_stats_atexit():
-        global_line_profiler.print(func, **kwargs)
+        global_line_profiler.print_func_stats(func, **kwargs)
     atexit.register(print_stats_atexit)
 
     return func
