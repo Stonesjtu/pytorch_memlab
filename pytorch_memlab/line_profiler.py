@@ -51,7 +51,7 @@ class LineProfiler:
     def __init__(self, *functions, target_gpu=0, **kwargs):
         self.target_gpu = target_gpu
         self._codes = {}
-        self._raw = []
+        self._raw_records = []
         self.enabled = False
         for func in functions:
             self.add_function(func)
@@ -115,7 +115,7 @@ class LineProfiler:
         if event in ['line', 'return'] and codehash in self._codes:
             codeinfo = self._codes[codehash]
             with torch.cuda.device(self.target_gpu):
-                self._raw.append({
+                self._raw_records.append({
                     'codehash': codehash, 
                     'line': codeinfo['prev_line'],
                     'prev': codeinfo['prev_record'],
@@ -124,7 +124,7 @@ class LineProfiler:
 
             if event == 'line':
                 codeinfo['prev_line'] = frame.f_lineno
-                codeinfo['prev_record'] = len(self._raw)-1
+                codeinfo['prev_record'] = len(self._raw_records)-1
             elif event == 'return':
                 codeinfo['prev_line'] = codeinfo['first_line']
                 codeinfo['prev_record'] = -1
@@ -138,13 +138,13 @@ class LineProfiler:
         # Allocated/freed stats are the sum since `prev` 
 
         # We'll do this in numpy because indexing lots of rows and columns in pandas is dog-slow. 
-        raw = pd.DataFrame(self._raw)
+        raw = pd.DataFrame(self._raw_records)
         acc_mask = raw.columns.str.match(r'.*(allocated|freed)$')
         peak_mask = raw.columns.str.match(r'.*(peak)$')
         acc_raw, peak_raw = raw.loc[:, acc_mask].values, raw.loc[:, peak_mask].values
         acc_refined, peak_refined = acc_raw.copy(), peak_raw.copy()
 
-        for row, record in enumerate(self._raw):
+        for row, record in enumerate(self._raw_records):
             if record['prev'] == -1:
                 # No previous data to accumulate from
                 continue
@@ -174,7 +174,7 @@ class LineProfiler:
 
     def print_stats(self, func=None, columns=['active_bytes.all.peak', 'reserved_bytes.all.peak'], stream=None):
         stream = stream or sys.stdout
-        if len(self._raw) == 0:
+        if len(self._raw_records) == 0:
             stream.write('No data collected.')
             return
 
