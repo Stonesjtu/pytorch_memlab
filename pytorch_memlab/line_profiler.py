@@ -144,13 +144,13 @@ class LineProfiler:
         acc_raw, peak_raw = raw.loc[:, acc_mask].values, raw.loc[:, peak_mask].values
         acc_refined, peak_refined = acc_raw.copy(), peak_raw.copy()
 
-        for i, r in enumerate(self._raw):
-            if r['prev'] == -1:
+        for row, record in enumerate(self._raw):
+            if record['prev'] == -1:
                 continue
-            if r['prev'] == i-1:
+            if record['prev'] == row-1:
                 continue
-            acc_refined[i] = acc_raw[r['prev']+1:i+1].sum(0)
-            peak_refined[i] = peak_raw[r['prev']+1:i+1].max(0)
+            acc_refined[row] = acc_raw[record['prev']+1:row+1].sum(0)
+            peak_refined[row] = peak_raw[record['prev']+1:row+1].max(0)
 
         refined = raw.copy()
         refined.loc[:, acc_mask] = acc_refined
