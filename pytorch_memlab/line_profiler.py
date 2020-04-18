@@ -163,7 +163,7 @@ class LineProfiler:
         records.columns = pd.MultiIndex.from_tuples([c.split('.') for c in records.columns])
         return records
 
-    def print_stats(self, columns=['active_bytes.all.peak', 'reserved_bytes.all.peak'], stream=None):
+    def print_stats(self, columns=['active_bytes.all.peak', 'reserved_bytes.all.peak'], func=None, stream=None):
         if len(self._raw) == 0:
             print('No data collected.')
             return
@@ -173,6 +173,8 @@ class LineProfiler:
         assert all(len(c) == 3 for c in columns), 'Each column name should have three dot-separated parts'
         assert all(c in records.columns for c in columns), 'The column names should come from torch.cuda.memory_stat()\'s output'
         records = records.loc[:, columns]
+        if func:
+            records = records.loc[[func]]
 
         bytecols = records.columns[records.columns.get_level_values(0).str.contains('byte')]
         maxes = records.max()
@@ -203,6 +205,10 @@ class LineProfiler:
             display(HTML())
         else:
             stream.write(html)
+
+    def print_func_stats(self, stats, func, **kwargs):
+        return self.print_stats(func=func, **kwargs)
+
 
 
 global_line_profiler = LineProfiler()
