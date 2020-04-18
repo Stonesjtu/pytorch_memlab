@@ -5,6 +5,7 @@ import pandas as pd
 import torch
 from .utils import readable_size
 from IPython.display import HTML, display
+from functools import wraps
 
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
@@ -251,4 +252,35 @@ def profile(func, **kwargs):
 
     return func
 
+def profile_every(output_interval=1, enable=True):
+    """Profile the CUDA memory usage of target function line by line
+
+    Prints the profiling output every `output_interval` execution of the target
+    function
+    The CUDA memory is collected only on the **current** cuda device.
+
+    Args:
+        - func: the function or method to profile on
+        - enable: whether to enable the profiling mode, so users don't have to
+        modify any source code for enabling and disabling profiling.
+        - output interval: frequency of output the profiling results
+    """
+
+    def inner_decorator(func):
+        func.cur_idx = 1
+
+        if enable:
+            global_line_profiler.add_function(func)
+
+        @wraps(func)
+        def run_func(*args, **kwargs):
+            res = func(*args, **kwargs)
+            if enable:
+                if func.cur_idx % output_interval == 0:
+                    global_line_profiler.print_func_stats(func)
+                func.cur_idx += 1
+            return res
+
+        return run_func
+    return inner_decorator
 
