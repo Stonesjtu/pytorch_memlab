@@ -211,7 +211,7 @@ class LineProfiler:
 
         template = '<h3><span style="font-family: monospace">{q}</span></h3><div>{c}</div>'
         html = '\n'.join(template.format(q=q, c=c) for q, c in chunks)
-        if stream is None:
+        if stream is sys.stdout: # Hack, remove when we sort out text display
             display(HTML(html))
         else:
             stream.write(html)
