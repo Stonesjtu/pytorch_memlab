@@ -46,7 +46,7 @@ class LineProfiler:
 
     def __init__(self, *functions, target_gpu=0, **kwargs):
         self.target_gpu = target_gpu
-        self.codes = {}
+        self._codes = {}
         self._records = []
         self.enabled = False
         for func in functions:
@@ -96,7 +96,7 @@ class LineProfiler:
 
         codehash = hash(frame.f_code)
         if event in ['line', 'return'] and codehash in self.codes:
-            last_line = self.codes[codehash]['line']
+            last_line = self._codes[codehash]['line']
             
             with torch.cuda.device(self.target_gpu):
                 self._records.append({
@@ -116,7 +116,7 @@ class LineProfiler:
 
     def records(self):
         # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
-        qualnames = {codehash: info['func'].__qualname__ for codehash, info in self.codes.items()}
+        qualnames = {codehash: info['func'].__qualname__ for codehash, info in self._codes.items()}
         records = (pd.DataFrame(self._records)
                         .assign(qualname=lambda df: df.codehash.map(qualnames))
                         .set_index(['qualname', 'line'])
@@ -139,7 +139,7 @@ class LineProfiler:
         maxes = records.max()
 
         chunks = []
-        for codehash, info in self.codes.items():
+        for codehash, info in self._codes.items():
             qualname = info['func'].__qualname__
             
             lines, startline = inspect.getsourcelines(info['func'])
