@@ -1,11 +1,11 @@
 import sys
 import inspect
+from functools import wraps
 import numpy as np
 import pandas as pd
 import torch
-from .utils import readable_size
 from IPython.display import HTML, display
-from functools import wraps
+from .utils import readable_size
 
 # Seaborn's `muted` color cycle
 COLORS = ['#4878d0', '#ee854a', '#6acc64', '#d65f5f', '#956cb4', '#8c613c', '#dc7ec0', '#797979', '#d5bb67', '#82c6e2']
