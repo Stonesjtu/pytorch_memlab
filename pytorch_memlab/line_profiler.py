@@ -61,8 +61,13 @@ class LineProfiler:
             import warnings
             warnings.warn("Could not extract a code object for the object %r" % (func,))
             return
-        if codehash not in self.codes:
-            self.codes[codehash] = {'line': -1, 'func': func}
+        if codehash not in self._codes:
+            first_line = inspect.getsourcelines(func)[1]
+            self._codes[codehash] = {
+                'func': func, 
+                'first_line': first_line,
+                'prev_line': first_line, 
+                'prev_record': -1}
 
         # re-register the newer trace_callback
         if self.enabled:
@@ -77,11 +82,19 @@ class LineProfiler:
 
     def register_callback(self):
         """Register the trace_callback only on demand"""
-        if self.codes:
+        if self._codes:
             sys.settrace(self.trace_callback)
+
+    def _reset_cuda_stats(self):
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.reset_accumulated_memory_stats()
 
     def enable(self):
         self.enabled = True
+
+        torch.cuda.empty_cache()
+        self._reset_cuda_stats()
+
         self.register_callback()
 
     def disable(self):
@@ -95,24 +108,26 @@ class LineProfiler:
             return self.trace_callback
 
         codehash = hash(frame.f_code)
-        if event in ['line', 'return'] and codehash in self.codes:
-            last_line = self._codes[codehash]['line']
-            
+        if event in ['line', 'return'] and codehash in self._codes:
+            codeinfo = self._codes[codehash]
             with torch.cuda.device(self.target_gpu):
                 self._records.append({
                     'codehash': codehash, 
-                    'line': last_line,
+                    'line': codeinfo['prev_line'],
                     **torch.cuda.memory_stats(self.target_gpu)})
                 #TODO: This causes problems when profiling more than one function, as 
                 # the inner function can reset the stats for the outer function. Hrm.
                 # Might be nothing for it but track them here.
-                torch.cuda.reset_peak_memory_stats()
-                torch.cuda.reset_accumulated_memory_stats()
+                self._reset_cuda_stats()
 
-            lineno = last_line + 1 if event == 'return' else frame.f_lineno
-            self.codes[codehash]['line'] = lineno
-
-        return
+            if event == 'line':
+                codeinfo['prev_line'] = frame.f_lineno
+                codeinfo['prev_record'] = len(self._records)
+            elif event == 'return':
+                codeinfo['prev_line'] = codeinfo['first_line']
+                codeinfo['prev_record'] = -1
+            else:
+                assert False
 
     def records(self):
         # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
