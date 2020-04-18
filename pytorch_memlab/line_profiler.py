@@ -131,7 +131,7 @@ class LineProfiler:
             else:
                 assert False
 
-    def _refined(self):
+    def _refined_line_records(self):
         # The records are line-by-line, but the stats we want to report are over periods.
         # So we need to accumulate some stuff.
         # Peak stats are the maximum since `prev`
@@ -160,7 +160,7 @@ class LineProfiler:
     def records(self):
         # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
         qualnames = {codehash: info['func'].__qualname__ for codehash, info in self._codes.items()}
-        records = (self._refined()
+        records = (self._refined_line_records()
                         .assign(qualname=lambda df: df.codehash.map(qualnames))
                         .set_index(['qualname', 'line'])
                         .drop(['codehash', 'num_alloc_retries', 'num_ooms'], 1))
