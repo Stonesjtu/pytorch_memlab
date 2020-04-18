@@ -83,7 +83,7 @@ class LineProfiler:
     def register_callback(self):
         """Register the trace_callback only on demand"""
         if self._codes:
-            sys.settrace(self.trace_callback)
+            sys.settrace(self._trace_callback)
 
     def _reset_cuda_stats(self):
         torch.cuda.reset_peak_memory_stats()
@@ -101,11 +101,11 @@ class LineProfiler:
         self.enabled = False
         sys.settrace(None)
 
-    def trace_callback(self, frame, event, arg):
+    def _trace_callback(self, frame, event, arg):
         """Trace the execution of python line-by-line"""
 
         if event == 'call':
-            return self.trace_callback
+            return self._trace_callback
 
         codehash = hash(frame.f_code)
         if event in ['line', 'return'] and codehash in self._codes:
