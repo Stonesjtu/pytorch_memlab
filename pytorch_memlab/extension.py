@@ -48,6 +48,10 @@ class MemlabMagics(Magics):
               nargs='*',
               default=None,
               help='Code to run under profiler. You can omit this in cell magic mode.')
+    @argument('-T',
+              '--dump-profile',
+              metavar='OUTPUT',
+              help='Dump text profile output to file')
     @line_cell_magic
     @needs_local_scope
     def mlrun(self, line=None, cell=None, local_ns=None):
@@ -76,7 +80,11 @@ class MemlabMagics(Magics):
             exec(compile(code, filename='<ipython>', mode='exec'), local_ns)
 
         if not args.quiet:
-            profiler.print(args.column)
+            profiler.print_stats(args.column)
+
+        if args.dump_profile is not None:
+            with open(args.dump_profile, 'w') as f:
+                profiler.print_stats(stream=f)
 
         if args.return_profiler:
             return profiler

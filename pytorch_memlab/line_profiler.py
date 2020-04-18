@@ -163,7 +163,7 @@ class LineProfiler:
         records.columns = pd.MultiIndex.from_tuples([c.split('.') for c in records.columns])
         return records
 
-    def print(self, columns=['active_bytes.all.peak', 'reserved_bytes.all.peak']):
+    def print_stats(self, columns=['active_bytes.all.peak', 'reserved_bytes.all.peak'], stream=None):
         if len(self._raw) == 0:
             print('No data collected.')
             return
@@ -198,7 +198,11 @@ class LineProfiler:
             chunks.append((qualname, chunk))
 
         template = '<h3><span style="font-family: monospace">{q}</span></h3><div>{c}</div>'
-        display(HTML('\n'.join(template.format(q=q, c=c) for q, c in chunks)))
+        html = '\n'.join(template.format(q=q, c=c) for q, c in chunks)
+        if stream is None:
+            display(HTML())
+        else:
+            stream.write(html)
 
 
 global_line_profiler = LineProfiler()
