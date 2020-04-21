@@ -24,17 +24,17 @@ def _accumulate_line_records(raw_line_records):
     acc_refined, peak_refined = acc_raw.copy(), peak_raw.copy()
 
     for row, record in enumerate(raw_line_records):
-        if record['prev'] == -1:
+        if record['prev_record_idx'] == -1:
             # No previous data to accumulate from
             continue
-        if record['prev'] == row-1:
+        if record['prev_record_idx'] == row-1:
             # Previous record was the previous line, so no need to accumulate anything
             continue
 
         # Another profiled function has been called since the last record, so we need to
         # accumulate the allocated/freed/peaks of the intervening records into this one. 
-        acc_refined[row] = acc_raw[record['prev']+1:row+1].sum(0)
-        peak_refined[row] = peak_raw[record['prev']+1:row+1].max(0)
+        acc_refined[row] = acc_raw[record['prev_record_idx']+1:row+1].sum(0)
+        peak_refined[row] = peak_raw[record['prev_record_idx']+1:row+1].max(0)
 
     refined = raw.copy()
     refined.loc[:, acc_mask] = acc_refined
@@ -47,7 +47,7 @@ def _line_records(raw_line_records, code_info):
     records = (_accumulate_line_records(raw_line_records)
                     .assign(qualname=lambda df: df.codehash.map(qualnames))
                     .set_index(['qualname', 'line'])
-                    .drop(['codehash', 'num_alloc_retries', 'num_ooms', 'prev'], 1))
+                    .drop(['codehash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], 1))
     records.columns = pd.MultiIndex.from_tuples([c.split('.') for c in records.columns])
 
     return records
@@ -227,7 +227,7 @@ class LineProfiler:
                 self._raw_line_records.append({
                     'codehash': code_hash, 
                     'line': code_info['prev_line'],
-                    'prev': code_info['prev_record'],
+                    'prev_record_idx': code_info['prev_record'],
                     **torch.cuda.memory_stats()})
                 self._reset_cuda_stats()
 
