@@ -23,7 +23,6 @@ class MemlabMagics(Magics):
               default=[],
               help="""Function to profile. Can be specified multiple times to profile multiple
                    functions""")
-    #TODO: How to provide default columns but also let users override them with a possibly empty list?
     @argument('--column',
               '-c',
               metavar='COLS',
@@ -32,6 +31,10 @@ class MemlabMagics(Magics):
               help="""Columns to display. Can be specified multiple times to profile multiple
                    functions. See the Torch CUDA spec at 
                    https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats for details.""")
+    @argument('-d',
+              '--default_column',
+              action='store_true',
+              help=f'Display the default columns of {", ".join(DEFAULT_COLUMNS)})')
     @argument('-r',
               '--return-profiler',
               action='store_true',
@@ -82,7 +85,8 @@ class MemlabMagics(Magics):
             exec(compile(code, filename='<ipython>', mode='exec'), local_ns)
 
         if not args.quiet:
-            profiler.print_stats(columns=args.column)
+            defaults = DEFAULT_COLUMNS if args.default_cols else []
+            profiler.print_stats(columns=defaults + args.column)
 
         if args.dump_profile is not None:
             with open(args.dump_profile, 'w') as f:

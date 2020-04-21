@@ -120,4 +120,3 @@ def test_line_report_profile_interrupt():
     work()
     work2()
     raise KeyboardInterrupt
-_code_info
