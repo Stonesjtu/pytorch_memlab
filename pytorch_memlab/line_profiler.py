@@ -117,7 +117,7 @@ class RecordsDisplay:
             merged['code'] = merged['code'].apply(lambda l: f'{{:{maxlen}s}}'.format(l.rstrip('\n\r')))
             string[qual_name] = merged.to_string(index=False)
 
-        return '\n\n'.join([f'{q}\n\n{c}' for q, c in string.items()])
+        return '\n\n\n'.join([f'## {q}\n\n{c}' for q, c in string.items()])
 
     def _repr_html_(self):
         """Renders the stats as HTML"""
