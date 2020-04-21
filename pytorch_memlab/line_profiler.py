@@ -78,9 +78,9 @@ class Display:
         for _, info in self._code_info.items():
             qualname = info['func'].__qualname__
             
-            lines, startline = inspect.getsourcelines(info['func'])
+            lines, start_line = inspect.getsourcelines(info['func'])
             lines = pd.DataFrame.from_dict({
-                'line': range(startline, startline+len(lines)), 
+                'line': range(start_line, start_line + len(lines)), 
                 'code': lines})
             lines.columns = pd.MultiIndex.from_product([lines.columns, [''], ['']])
             
@@ -124,7 +124,9 @@ class Display:
                                 .set_properties(
                                     subset=['code'], 
                                     **{'text-align': 'left', 'white-space': 'pre', 'font-family': 'monospace'})
-                                .set_table_styles([dict(selector='th', props=[('text-align', 'left')])]) 
+                                .set_table_styles([{
+                                    'selector': 'th', 
+                                    'props': [('text-align', 'left')]}]) 
                                 .hide_index()
                                 .render())
 
@@ -250,8 +252,8 @@ class LineProfiler:
     def print_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=sys.stdout):
         stream.write(repr(self.display(func, columns)))
 
-    def print_func_stats(self, stats, func, **kwargs):
-        return self.print_stats(func=func, **kwargs)
+    def print_func_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=sys.stdout):
+        return self.print_stats(func, columns, stream)
 
 global_line_profiler = LineProfiler()
 global_line_profiler.enable()
@@ -271,7 +273,7 @@ def set_target_gpu(gpu_id):
     global_line_profiler.target_gpu = gpu_id
 
 
-def profile(func, **kwargs):
+def profile(func, columns=DEFAULT_COLUMNS):
     """Profile the CUDA memory usage of target function line by line
 
     The profiling results will be printed at exiting, KeyboardInterrupt raised.
@@ -303,12 +305,12 @@ def profile(func, **kwargs):
     global_line_profiler.add_function(func)
 
     def print_stats_atexit():
-        global_line_profiler.print_func_stats(func, **kwargs)
+        global_line_profiler.print_func_stats(func, columns)
     atexit.register(print_stats_atexit)
 
     return func
 
-def profile_every(output_interval=1, enable=True):
+def profile_every(output_interval=1, enable=True, columns=DEFAULT_COLUMNS):
     """Profile the CUDA memory usage of target function line by line
 
     Prints the profiling output every `output_interval` execution of the target
@@ -333,7 +335,7 @@ def profile_every(output_interval=1, enable=True):
             res = func(*args, **kwargs)
             if enable:
                 if func.cur_idx % output_interval == 0:
-                    global_line_profiler.print_func_stats(func)
+                    global_line_profiler.print_func_stats(func, columns)
                 func.cur_idx += 1
             return res
 
