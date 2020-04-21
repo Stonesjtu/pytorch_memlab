@@ -4,14 +4,29 @@ import numpy as np
 
 from pytorch_memlab import LineProfiler, profile, profile_every, set_target_gpu
 
-def test_records():
+def test_display():
 
-    def alloc_8b():
-        torch.tensor((1,)).cuda()
+    def work():
+        # comment
+        linear = torch.nn.Linear(100, 100).cuda()
+        linear_2 = torch.nn.Linear(100, 100).cuda()
+        linear_3 = torch.nn.Linear(100, 100).cuda()
+
+    def work_3():
+        lstm = torch.nn.LSTM(1000, 1000).cuda()
+
+    def work_2():
+        # comment
+        linear = torch.nn.Linear(100, 100).cuda()
+        linear_2 = torch.nn.Linear(100, 100).cuda()
+        linear_3 = torch.nn.Linear(100, 100).cuda()
+        work_3()
     
-    with LineProfiler(alloc_8b) as prof:
-        alloc_8b()
-    records = prof.records()
+    with LineProfiler(work, work_2) as prof:
+        work()
+        work_2()
+
+    prof.display()
 
 
 def test_line_report():
