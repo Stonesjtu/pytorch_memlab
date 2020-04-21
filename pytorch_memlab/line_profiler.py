@@ -11,10 +11,15 @@ COLORS = ['#4878d0', '#ee854a', '#6acc64', '#d65f5f', '#956cb4', '#8c613c', '#dc
 DEFAULT_COLUMNS = ['active_bytes.all.peak', 'reserved_bytes.all.peak']
 
 def _accumulate_line_records(raw_line_records):
-    # The records are line-by-line, but the stats we want to report are over periods.
-    # So we need to accumulate some stuff.
-    # Peak stats are the maximum since `prev`
-    # Allocated/freed stats are the sum since `prev` 
+    """The raw records give the memory stats between successive lines executed by the profiler.
+    But we want the memory stats between successive lines in our functions! The two diverge when 
+    a function we're profiling calls another function we're profiling, since then Torch will have
+    its peak/allocated/freed memory stats reset on each line of the called function. 
+
+    To fix that, here we look at each line record in turn, and for peak stats we take the 
+    maximum since the last record _in the same function_. For allocated/freed stats, we take the 
+    sum since the last record in the same function.
+    """
 
     # We'll do this in numpy because indexing lots of rows and columns in pandas is dog-slow. 
     raw = pd.DataFrame(raw_line_records)
@@ -42,6 +47,9 @@ def _accumulate_line_records(raw_line_records):
     return refined
 
 def _line_records(raw_line_records, code_info):
+    """Converts the raw line records to a nicely-shaped dataframe whose values reflect the memory
+    usage of lines of _functions_ rather than lines of _execution_. See the `_accumualte_line_records`
+    docstring for more detail."""
     # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
     qualnames = {codehash: info['func'].__qualname__ for codehash, info in code_info.items()}
     records = (_accumulate_line_records(raw_line_records)
@@ -53,6 +61,8 @@ def _line_records(raw_line_records, code_info):
     return records
 
 def _subset_line_records(line_records, func=None, columns=None):
+    """Extracts the subset of a line_records dataframe pertinent to a given set of functions and
+    columns"""
     if func is not None:
         line_records = line_records.loc[func]
 
@@ -67,7 +77,10 @@ def _subset_line_records(line_records, func=None, columns=None):
     return line_records
 
 
-class Display:
+class RecordsDisplay:
+    """IPython's rich display functionality [requires we return](https://ipython.readthedocs.io/en/stable/config/integrating.html)
+    an object that has a `_repr_html_` method for when HTML rendering is supported, and 
+    a `__repr__` method for when only text is available"""
 
     def __init__(self, line_records, code_info):
         self._line_records = line_records
@@ -90,6 +103,7 @@ class Display:
         return merged
 
     def __repr__(self):
+        """Renders the stats as text"""
         if len(self._line_records) == 0:
             return 'No data collected'
 
@@ -106,6 +120,7 @@ class Display:
         return '\n\n'.join([f'{q}\n\n{c}' for q, c in string.items()])
 
     def _repr_html_(self):
+        """Renders the stats as HTML"""
         if len(self._line_records) == 0:
             return '<p>No data collected</p>'
 
@@ -147,13 +162,14 @@ class LineProfiler:
         ```python
         with LineProfiler(func) as lp:
             func
-        lp.print_stats()
+        lp.display()
 
+        ```python
         lp = LineProfiler(func)
         lp.enable()
         func()
         lp.disable()
-        lp.print_stats()
+        lp.display()
         ```
     """
 
@@ -243,11 +259,25 @@ class LineProfiler:
                 assert False
 
     def line_records(self, func=None, columns=DEFAULT_COLUMNS):
+        """Returns a (line, statistic)-indexed dataframe of memory stats.
+        
+        The columns are explained in the PyTorch documentation:
+        
+        https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
+        """
         line_records = _line_records(self._raw_line_records, self._code_info)
         return _subset_line_records(line_records, func, columns)
 
     def display(self, func=None, columns=DEFAULT_COLUMNS):
-        return Display(self.line_records(func, columns), self._code_info)
+        """Returns an object that'll display the recorded stats in the IPython console.
+
+        The columns are explained in the PyTorch documentation:
+        
+        https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
+        
+        To work, this needs to be the last thing returned in the IPython statement or cell.
+        """ 
+        return RecordsDisplay(self.line_records(func, columns), self._code_info)
 
     def print_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=sys.stdout):
         stream.write(repr(self.display(func, columns)))
@@ -278,6 +308,10 @@ def profile(func, columns=DEFAULT_COLUMNS):
 
     The profiling results will be printed at exiting, KeyboardInterrupt raised.
     The CUDA memory is collected only on the **current** cuda device.
+        
+    The columns are explained in the PyTorch documentation:
+    
+    https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
 
     Usage:
         ```python
@@ -316,6 +350,10 @@ def profile_every(output_interval=1, enable=True, columns=DEFAULT_COLUMNS):
     Prints the profiling output every `output_interval` execution of the target
     function
     The CUDA memory is collected only on the **current** cuda device.
+        
+    The columns are explained in the PyTorch documentation:
+    
+    https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
 
     Args:
         - func: the function or method to profile on
