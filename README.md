@@ -77,7 +77,7 @@ or the following info if you're in a text-only terminal:
 ```
 ## outer
 
-active_bytes reserved_bytes line                                             code
+active_bytes reserved_bytes line  code                                           
          all            all                                                      
         peak           peak                                                      
        0.00B          0.00B    7  def outer():                                   
@@ -88,11 +88,11 @@ active_bytes reserved_bytes line                                             cod
 
 ## inner
 
-active_bytes reserved_bytes line                                   code
+active_bytes reserved_bytes line  code                                 
          all            all                                            
         peak           peak                                            
       80.00K          2.00M    4  def inner():                         
-     120.00K          2.00M    5      torch.nn.Linear(100, 100).cuda() 
+     120.00K          2.00M    5      torch.nn.Linear(100, 100).cuda()  
 ```
 
 An explanation of what each column means can be found in the [Torch documentation](https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats). The name of any field from `memory_stats()`

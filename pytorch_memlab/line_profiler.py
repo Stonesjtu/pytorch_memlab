@@ -121,7 +121,12 @@ class RecordsDisplay:
         for qual_name, merged in self._line_records_merged_with_code().items():
             left_align = '{{:{maxlen}s}}'.format(maxlen=max(map(len, merged.code)))
             merged[byte_cols] = merged[byte_cols].applymap(readable_size)
-            merged['code'] = merged['code'].apply(lambda l: left_align.format(l.rstrip('\n\r')))
+
+            # This is a mess, but I can't find any other way to left-align text strings.
+            code_header = (left_align.format('code'), '', '')
+            merged[code_header] = merged['code'].apply(lambda l: left_align.format(l.rstrip('\n\r')))
+            merged = merged.drop('code', 1, level=0)
+
             string[qual_name] = merged.to_string(index=False)
 
         return '\n\n\n'.join(['## {q}\n\n{c}'.format(q=q, c=c) for q, c in string.items()])
