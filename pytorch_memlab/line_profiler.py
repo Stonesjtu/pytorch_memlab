@@ -228,8 +228,11 @@ class LineProfiler:
     def enable(self):
         self.enabled = True
 
-        torch.cuda.empty_cache()
-        self._reset_cuda_stats()
+        try:
+            torch.cuda.empty_cache()
+            self._reset_cuda_stats()
+        except AssertionError as e:
+            print('Could not reset CUDA stats and cache: ' + str(e))
 
         self.register_callback()
 
