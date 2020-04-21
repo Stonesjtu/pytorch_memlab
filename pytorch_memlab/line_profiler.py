@@ -51,10 +51,10 @@ def _line_records(raw_line_records, code_info):
     usage of lines of _functions_ rather than lines of _execution_. See the `_accumualte_line_records`
     docstring for more detail."""
     # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
-    qualnames = {codehash: info['func'].__qualname__ for codehash, info in code_info.items()}
+    qual_names = {codehash: info['func'].__qual_name__ for codehash, info in code_info.items()}
     records = (_accumulate_line_records(raw_line_records)
-                    .assign(qualname=lambda df: df.codehash.map(qualnames))
-                    .set_index(['qualname', 'line'])
+                    .assign(qual_name=lambda df: df.codehash.map(qual_names))
+                    .set_index(['qual_name', 'line'])
                     .drop(['codehash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], 1))
     records.columns = pd.MultiIndex.from_tuples([c.split('.') for c in records.columns])
 
@@ -89,7 +89,7 @@ class RecordsDisplay:
     def _line_records_merged_with_code(self):
         merged = {}
         for _, info in self._code_info.items():
-            qualname = info['func'].__qualname__
+            qual_name = info['func'].__qual_name__
             
             lines, start_line = inspect.getsourcelines(info['func'])
             lines = pd.DataFrame.from_dict({
@@ -97,8 +97,8 @@ class RecordsDisplay:
                 'code': lines})
             lines.columns = pd.MultiIndex.from_product([lines.columns, [''], ['']])
             
-            merged[qualname] = pd.merge(
-                self._line_records.loc[qualname], lines, 
+            merged[qual_name] = pd.merge(
+                self._line_records.loc[qual_name], lines, 
                 right_on='line', left_index=True, how='right')
         return merged
 
@@ -111,11 +111,11 @@ class RecordsDisplay:
         byte_cols = self._line_records.columns[is_byte_col]
 
         string = {}
-        for qualname, merged in self._line_records_merged_with_code().items():
+        for qual_name, merged in self._line_records_merged_with_code().items():
             maxlen = max(map(len, merged.code))
             merged[byte_cols] = merged[byte_cols].applymap(readable_size)
             merged['code'] = merged['code'].apply(lambda l: f'{{:{maxlen}s}}'.format(l.rstrip('\n\r')))
-            string[qualname] = merged.to_string(index=False)
+            string[qual_name] = merged.to_string(index=False)
 
         return '\n\n'.join([f'{q}\n\n{c}' for q, c in string.items()])
 
@@ -129,12 +129,12 @@ class RecordsDisplay:
         maxes = self._line_records.max()
 
         html = {}
-        for qualname, merged in self._line_records_merged_with_code().items():
+        for qual_name, merged in self._line_records_merged_with_code().items():
             style = merged.style
             for i, c in enumerate(self._line_records.columns):
                 style = style.bar([c], color=COLORS[i % len(COLORS)], width=99, vmin=0, vmax=maxes[c])
 
-            html[qualname] = (style
+            html[qual_name] = (style
                                 .format({c: readable_size for c in byte_cols})
                                 .set_properties(
                                     subset=['code'], 
