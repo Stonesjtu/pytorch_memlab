@@ -51,11 +51,11 @@ def _line_records(raw_line_records, code_infos):
     usage of lines of _functions_ rather than lines of _execution_. See the `_accumualte_line_records`
     docstring for more detail."""
     # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
-    qual_names = {codehash: info['func'].__qualname__ for codehash, info in code_infos.items()}
+    qual_names = {code_hash: info['func'].__qualname__ for code_hash, info in code_infos.items()}
     records = (_accumulate_line_records(raw_line_records)
-                    .assign(qual_name=lambda df: df.codehash.map(qual_names))
+                    .assign(qual_name=lambda df: df.code_hash.map(qual_names))
                     .set_index(['qual_name', 'line'])
-                    .drop(['codehash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], 1))
+                    .drop(['code_hash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], 1))
     records.columns = pd.MultiIndex.from_tuples([c.split('.') for c in records.columns])
 
     return records
@@ -251,7 +251,7 @@ class LineProfiler:
             code_info = self._code_infos[code_hash]
             with torch.cuda.device(self.target_gpu):
                 self._raw_line_records.append({
-                    'codehash': code_hash, 
+                    'code_hash': code_hash, 
                     'line': code_info['prev_line'],
                     'prev_record_idx': code_info['prev_record'],
                     **torch.cuda.memory_stats()})
@@ -273,6 +273,9 @@ class LineProfiler:
         
         https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
         """
+        if len(self._raw_line_records) == 0:
+            return pd.DataFrame(index=pd.MultiIndex.from_product([[], []]), columns=columns)
+
         line_records = _line_records(self._raw_line_records, self._code_infos)
         return _subset_line_records(line_records, func, columns)
 

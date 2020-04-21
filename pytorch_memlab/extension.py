@@ -31,10 +31,10 @@ class MemlabMagics(Magics):
               help="""Columns to display. Can be specified multiple times to profile multiple
                    functions. See the Torch CUDA spec at 
                    https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats for details.""")
-    @argument('-d',
-              '--default_column',
+    @argument('-D',
+              '--no_default_columns',
               action='store_true',
-              help='Display the default columns of ' + ", ".join(DEFAULT_COLUMNS))
+              help='Hide the default columns of ' + ", ".join(DEFAULT_COLUMNS))
     @argument('-r',
               '--return-profiler',
               action='store_true',
@@ -84,16 +84,15 @@ class MemlabMagics(Magics):
         with profiler:
             exec(compile(code, filename='<ipython>', mode='exec'), local_ns)
 
-        if not args.quiet:
-            defaults = DEFAULT_COLUMNS if args.default_cols else []
-            profiler.print_stats(columns=defaults + args.column)
-
         if args.dump_profile is not None:
             with open(args.dump_profile, 'w') as f:
                 profiler.print_stats(stream=f)
 
         if args.return_profiler:
             return profiler
+        else:
+            defaults = [] if args.no_default_columns else DEFAULT_COLUMNS
+            return profiler.display(columns=defaults + args.column)
 
 
 def load_ipython_extension(ipython):
