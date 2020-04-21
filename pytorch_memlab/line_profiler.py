@@ -51,7 +51,7 @@ def _line_records(raw_line_records, code_infos):
     usage of lines of _functions_ rather than lines of _execution_. See the `_accumualte_line_records`
     docstring for more detail."""
     # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
-    qual_names = {codehash: info['func'].__qual_name__ for codehash, info in code_infos.items()}
+    qual_names = {codehash: info['func'].__qualname__ for codehash, info in code_infos.items()}
     records = (_accumulate_line_records(raw_line_records)
                     .assign(qual_name=lambda df: df.codehash.map(qual_names))
                     .set_index(['qual_name', 'line'])
@@ -89,7 +89,7 @@ class RecordsDisplay:
     def _line_records_merged_with_code(self):
         merged = {}
         for _, info in self._code_infos.items():
-            qual_name = info['func'].__qual_name__
+            qual_name = info['func'].__qualname__
             
             lines, start_line = inspect.getsourcelines(info['func'])
             lines = pd.DataFrame.from_dict({
