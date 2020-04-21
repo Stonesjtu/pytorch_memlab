@@ -130,10 +130,14 @@ class RecordsDisplay:
 
         html = {}
         for qual_name, merged in self._line_records_merged_with_code().items():
+
             style = merged.style
+
+            # Style the bar charts
             for i, c in enumerate(self._line_records.columns):
                 style = style.bar([c], color=COLORS[i % len(COLORS)], width=99, vmin=0, vmax=maxes[c])
 
+            # Style the text
             html[qual_name] = (style
                                 .format({c: readable_size for c in byte_cols})
                                 .set_properties(
