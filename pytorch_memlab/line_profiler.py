@@ -6,7 +6,9 @@ import pandas as pd
 from .utils import readable_size
 
 # Seaborn's `muted` color cycle
-COLORS = ['#4878d0', '#ee854a', '#6acc64', '#d65f5f', '#956cb4', '#8c613c', '#dc7ec0', '#797979', '#d5bb67', '#82c6e2']
+COLORS = [
+    '#4878d0', '#ee854a', '#6acc64', '#d65f5f', '#956cb4', 
+    '#8c613c', '#dc7ec0', '#797979', '#d5bb67', '#82c6e2']
 
 DEFAULT_COLUMNS = ['active_bytes.all.peak', 'reserved_bytes.all.peak']
 
@@ -47,9 +49,9 @@ def _accumulate_line_records(raw_line_records):
     return refined
 
 def _line_records(raw_line_records, code_infos):
-    """Converts the raw line records to a nicely-shaped dataframe whose values reflect the memory
-    usage of lines of _functions_ rather than lines of _execution_. See the `_accumualte_line_records`
-    docstring for more detail."""
+    """Converts the raw line records to a nicely-shaped dataframe whose values reflect 
+    the memory usage of lines of _functions_ rather than lines of _execution_. See the 
+    `_accumulate_line_records` docstring for more detail."""
     # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
     qual_names = {code_hash: info['func'].__qualname__ for code_hash, info in code_infos.items()}
     records = (_accumulate_line_records(raw_line_records)
@@ -136,14 +138,17 @@ class RecordsDisplay:
 
             # Style the bar charts
             for i, c in enumerate(self._line_records.columns):
-                style = style.bar([c], color=COLORS[i % len(COLORS)], width=99, vmin=0, vmax=maxes[c])
+                style = style.bar([c], color=COLORS[i % len(COLORS)], 
+                                width=99, vmin=0, vmax=maxes[c])
 
             # Style the text
             html[qual_name] = (style
                                 .format({c: readable_size for c in byte_cols})
                                 .set_properties(
-                                    subset=['code'], 
-                                    **{'text-align': 'left', 'white-space': 'pre', 'font-family': 'monospace'})
+                                    subset=['code'], **{
+                                        'text-align': 'left', 
+                                        'white-space': 'pre', 
+                                        'font-family': 'monospace'})
                                 .set_table_styles([{
                                     'selector': 'th', 
                                     'props': [('text-align', 'left')]}]) 
