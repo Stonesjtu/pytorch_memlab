@@ -1,7 +1,6 @@
 import sys
 import inspect
 from functools import wraps
-import numpy as np
 import pandas as pd
 import torch
 from IPython.display import HTML, display
@@ -26,6 +25,10 @@ def set_target_gpu(gpu_id):
     """
     global_line_profiler.target_gpu = gpu_id
 
+class Statistics:
+
+    def __init__(self, line_records):
+        super().__init__()
 
 class LineProfiler:
     """Profile the CUDA memory usage info for each line in pytorch
@@ -52,8 +55,8 @@ class LineProfiler:
 
     def __init__(self, *functions, target_gpu=0, **kwargs):
         self.target_gpu = target_gpu
-        self._codes = {}
-        self._raw_records = []
+        self._code_info = {}
+        self._raw_line_records = []
         self.enabled = False
         for func in functions:
             self.add_function(func)
@@ -62,14 +65,14 @@ class LineProfiler:
         """ Record line profiling information for the given Python function.
         """
         try:
-            codehash = hash(func.__code__)
+            code_hash = hash(func.__code__)
         except AttributeError:
             import warnings
             warnings.warn("Could not extract a code object for the object %r" % (func,))
             return
-        if codehash not in self._codes:
+        if code_hash not in self._code_info:
             first_line = inspect.getsourcelines(func)[1]
-            self._codes[codehash] = {
+            self._code_info[code_hash] = {
                 'func': func, 
                 'first_line': first_line,
                 'prev_line': first_line, 
@@ -88,7 +91,7 @@ class LineProfiler:
 
     def register_callback(self):
         """Register the trace_callback only on demand"""
-        if self._codes:
+        if self._code_info:
             sys.settrace(self._trace_callback)
 
     def _reset_cuda_stats(self):
@@ -113,40 +116,40 @@ class LineProfiler:
         if event == 'call':
             return self._trace_callback
 
-        codehash = hash(frame.f_code)
-        if event in ['line', 'return'] and codehash in self._codes:
-            codeinfo = self._codes[codehash]
+        code_hash = hash(frame.f_code)
+        if event in ['line', 'return'] and code_hash in self._code_info:
+            code_info = self._code_info[code_hash]
             with torch.cuda.device(self.target_gpu):
-                self._raw_records.append({
-                    'codehash': codehash, 
-                    'line': codeinfo['prev_line'],
-                    'prev': codeinfo['prev_record'],
+                self._raw_line_records.append({
+                    'codehash': code_hash, 
+                    'line': code_info['prev_line'],
+                    'prev': code_info['prev_record'],
                     **torch.cuda.memory_stats(self.target_gpu)})
                 self._reset_cuda_stats()
 
             if event == 'line':
-                codeinfo['prev_line'] = frame.f_lineno
-                codeinfo['prev_record'] = len(self._raw_records)-1
+                code_info['prev_line'] = frame.f_lineno
+                code_info['prev_record'] = len(self._raw_line_records)-1
             elif event == 'return':
-                codeinfo['prev_line'] = codeinfo['first_line']
-                codeinfo['prev_record'] = -1
+                code_info['prev_line'] = code_info['first_line']
+                code_info['prev_record'] = -1
             else:
                 assert False
 
-    def _refined_line_records(self):
+    def _accumulated_line_records(self):
         # The records are line-by-line, but the stats we want to report are over periods.
         # So we need to accumulate some stuff.
         # Peak stats are the maximum since `prev`
         # Allocated/freed stats are the sum since `prev` 
 
         # We'll do this in numpy because indexing lots of rows and columns in pandas is dog-slow. 
-        raw = pd.DataFrame(self._raw_records)
+        raw = pd.DataFrame(self._raw_line_records)
         acc_mask = raw.columns.str.match(r'.*(allocated|freed)$')
         peak_mask = raw.columns.str.match(r'.*(peak)$')
         acc_raw, peak_raw = raw.loc[:, acc_mask].values, raw.loc[:, peak_mask].values
         acc_refined, peak_refined = acc_raw.copy(), peak_raw.copy()
 
-        for row, record in enumerate(self._raw_records):
+        for row, record in enumerate(self._raw_line_records):
             if record['prev'] == -1:
                 # No previous data to accumulate from
                 continue
@@ -164,41 +167,39 @@ class LineProfiler:
         refined.loc[:, peak_mask] = peak_refined    
         return refined
 
-    def records(self):
+    def line_records(self, func=None, columns=None):
         # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
-        qualnames = {codehash: info['func'].__qualname__ for codehash, info in self._codes.items()}
-        records = (self._refined_line_records()
+        if func is not None:
+            return self.line_records(None, columns).loc[func]
+        if columns is not None: 
+            records = self.line_records(func, None)
+            columns = [tuple(c.split('.')) for c in columns]
+            if not all(len(c) == 3 for c in columns):
+                raise ValueError('Each column name should have three dot-separated parts')
+            if not all(c in records.columns for c in columns):
+                raise ValueError(f'The column names should be fields of torch.cuda.memory_stat(). Options are: {", ".join(".".join(c) for c in records.columns.tolist())}')
+            return records.loc[:, columns]
+
+        qualnames = {codehash: info['func'].__qualname__ for codehash, info in self._code_info.items()}
+        records = (self._accumulated_line_records()
                         .assign(qualname=lambda df: df.codehash.map(qualnames))
-                        .set_index(['qualname', 'line', 'prev'])
-                        .drop(['codehash', 'num_alloc_retries', 'num_ooms'], 1))
+                        .set_index(['qualname', 'line'])
+                        .drop(['codehash', 'num_alloc_retries', 'num_ooms', 'prev'], 1))
         records.columns = pd.MultiIndex.from_tuples([c.split('.') for c in records.columns])
         return records
 
-    def _record_subset(self, func, columns):
-        records = self.records().groupby(axis=0, level=[0, 1]).max()
-        columns = [tuple(c.split('.')) for c in columns]
-        if not all(len(c) == 3 for c in columns):
-            raise ValueError('Each column name should have three dot-separated parts')
-        if not all(c in records.columns for c in columns):
-            raise ValueError(f'The column names should be fields of torch.cuda.memory_stat(). Options are: {", ".join(".".join(c) for c in records.columns.tolist())}')
-        records = records.loc[:, columns]
-        if func:
-            records = records.loc[[func]]
-        return records
-
-
     def print_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=None):
         stream = stream or sys.stdout
-        if len(self._raw_records) == 0:
+        if len(self._raw_line_records) == 0:
             stream.write('No data collected.')
             return
 
-        records = self._record_subset(func, columns)
+        records = self.line_records(func, columns)
         bytecols = records.columns[records.columns.get_level_values(0).str.contains('byte')]
         maxes = records.max()
 
         chunks = []
-        for codehash, info in self._codes.items():
+        for codehash, info in self._code_info.items():
             qualname = info['func'].__qualname__
             
             lines, startline = inspect.getsourcelines(info['func'])
