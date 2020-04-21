@@ -66,7 +66,8 @@ def _subset_line_records(line_records, func=None, columns=None):
     """Extracts the subset of a line_records dataframe pertinent to a given set of functions and
     columns"""
     if func is not None:
-        line_records = line_records.loc[func]
+        # Support both passing the function directly and passing a qual name/list of qual names
+        line_records = line_records.loc[[func.__qualname__] if callable(func) else func]
 
     if columns is not None: 
         columns = [tuple(c.split('.')) for c in columns]
@@ -93,16 +94,16 @@ class RecordsDisplay:
         merged = {}
         for _, info in self._code_infos.items():
             qual_name = info['func'].__qualname__
-            
-            lines, start_line = inspect.getsourcelines(info['func'])
-            lines = pd.DataFrame.from_dict({
-                'line': range(start_line, start_line + len(lines)), 
-                'code': lines})
-            lines.columns = pd.MultiIndex.from_product([lines.columns, [''], ['']])
-            
-            merged[qual_name] = pd.merge(
-                self._line_records.loc[qual_name], lines, 
-                right_on='line', left_index=True, how='right')
+            if qual_name in self._line_records.index.get_level_values(0):
+                lines, start_line = inspect.getsourcelines(info['func'])
+                lines = pd.DataFrame.from_dict({
+                    'line': range(start_line, start_line + len(lines)), 
+                    'code': lines})
+                lines.columns = pd.MultiIndex.from_product([lines.columns, [''], ['']])
+                
+                merged[qual_name] = pd.merge(
+                    self._line_records.loc[qual_name], lines, 
+                    right_on='line', left_index=True, how='right')
         return merged
 
     def __repr__(self):
@@ -299,10 +300,15 @@ class LineProfiler:
         stream.write(repr(self.display(func, columns)))
 
     def print_func_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=sys.stdout):
-        return self.print_stats(func, columns, stream)
+        self.print_stats(func, columns, stream)
 
-global_line_profiler = LineProfiler()
-global_line_profiler.enable()
+global_line_profiler = None
+def reset_global_line_profiler():
+    """Resets the global line profiler"""
+    global global_line_profiler
+    global_line_profiler = LineProfiler()
+    global_line_profiler.enable()
+reset_global_line_profiler()
 
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
@@ -317,7 +323,6 @@ def set_target_gpu(gpu_id):
         also accepts `torch.device` object.
     """
     global_line_profiler.target_gpu = gpu_id
-
 
 def profile(func, columns=DEFAULT_COLUMNS):
     """Profile the CUDA memory usage of target function line by line
