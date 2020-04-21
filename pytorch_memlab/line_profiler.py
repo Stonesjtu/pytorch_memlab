@@ -87,7 +87,10 @@ class RecordsDisplay:
     a `__repr__` method for when only text is available"""
 
     def __init__(self, line_records, code_infos):
-        self._line_records = line_records.groupby(level=[0, 1]).max()
+        if len(line_records) > 0:
+            self._line_records = line_records.groupby(level=[0, 1]).max() 
+        else:
+            self._line_records = line_records
         self._code_infos = code_infos
 
     def _line_records_merged_with_code(self):
