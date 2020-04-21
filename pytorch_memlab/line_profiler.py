@@ -94,12 +94,12 @@ class Display:
             return 'No data collected'
 
         is_byte_col = self._line_records.columns.get_level_values(0).str.contains('byte')
-        bytecols = self._line_records.columns[is_byte_col]
+        byte_cols = self._line_records.columns[is_byte_col]
 
         string = {}
         for qualname, merged in self._line_records_merged_with_code().items():
             maxlen = max(map(len, merged.code))
-            merged[bytecols] = merged[bytecols].applymap(readable_size)
+            merged[byte_cols] = merged[byte_cols].applymap(readable_size)
             merged['code'] = merged['code'].apply(lambda l: f'{{:{maxlen}s}}'.format(l.rstrip('\n\r')))
             string[qualname] = merged.to_string(index=False)
 
@@ -110,7 +110,7 @@ class Display:
             return '<p>No data collected</p>'
 
         is_byte_col = self._line_records.columns.get_level_values(0).str.contains('byte')
-        bytecols = self._line_records.columns[is_byte_col]
+        byte_cols = self._line_records.columns[is_byte_col]
         maxes = self._line_records.max()
 
         html = {}
@@ -120,7 +120,7 @@ class Display:
                 style = style.bar([c], color=COLORS[i % len(COLORS)], width=99, vmin=0, vmax=maxes[c])
 
             html[qualname] = (style
-                                .format({c: readable_size for c in bytecols})
+                                .format({c: readable_size for c in byte_cols})
                                 .set_properties(
                                     subset=['code'], 
                                     **{'text-align': 'left', 'white-space': 'pre', 'font-family': 'monospace'})
