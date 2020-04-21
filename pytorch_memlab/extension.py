@@ -1,3 +1,4 @@
+from tempfile import mkstemp
 from IPython.core.magic import (
     Magics,
     magics_class,
@@ -6,7 +7,6 @@ from IPython.core.magic import (
 )
 from IPython.core.magic_arguments import magic_arguments, argument, parse_argstring
 from .line_profiler import LineProfiler, DEFAULT_COLUMNS
-from tempfile import mkstemp
 
 
 class UsageError(Exception):

@@ -1,8 +1,8 @@
 import sys
 import inspect
 from functools import wraps
-import pandas as pd
 import torch
+import pandas as pd
 from .utils import readable_size
 
 # Seaborn's `muted` color cycle
