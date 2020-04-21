@@ -46,12 +46,12 @@ def _accumulate_line_records(raw_line_records):
     refined.loc[:, peak_mask] = peak_refined    
     return refined
 
-def _line_records(raw_line_records, code_info):
+def _line_records(raw_line_records, code_infos):
     """Converts the raw line records to a nicely-shaped dataframe whose values reflect the memory
     usage of lines of _functions_ rather than lines of _execution_. See the `_accumualte_line_records`
     docstring for more detail."""
     # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
-    qual_names = {codehash: info['func'].__qual_name__ for codehash, info in code_info.items()}
+    qual_names = {codehash: info['func'].__qual_name__ for codehash, info in code_infos.items()}
     records = (_accumulate_line_records(raw_line_records)
                     .assign(qual_name=lambda df: df.codehash.map(qual_names))
                     .set_index(['qual_name', 'line'])
@@ -82,13 +82,13 @@ class RecordsDisplay:
     an object that has a `_repr_html_` method for when HTML rendering is supported, and 
     a `__repr__` method for when only text is available"""
 
-    def __init__(self, line_records, code_info):
+    def __init__(self, line_records, code_infos):
         self._line_records = line_records
-        self._code_info = code_info
+        self._code_infos = code_infos
 
     def _line_records_merged_with_code(self):
         merged = {}
-        for _, info in self._code_info.items():
+        for _, info in self._code_infos.items():
             qual_name = info['func'].__qual_name__
             
             lines, start_line = inspect.getsourcelines(info['func'])
@@ -175,7 +175,7 @@ class LineProfiler:
 
     def __init__(self, *functions, target_gpu=0, **kwargs):
         self.target_gpu = target_gpu
-        self._code_info = {}
+        self._code_infos = {}
         self._raw_line_records = []
         self.enabled = False
         for func in functions:
@@ -192,9 +192,9 @@ class LineProfiler:
             import warnings
             warnings.warn("Could not extract a code object for the object %r" % (func,))
             return
-        if code_hash not in self._code_info:
+        if code_hash not in self._code_infos:
             first_line = inspect.getsourcelines(func)[1]
-            self._code_info[code_hash] = {
+            self._code_infos[code_hash] = {
                 'func': func, 
                 'first_line': first_line,
                 'prev_line': first_line, 
@@ -213,7 +213,7 @@ class LineProfiler:
 
     def register_callback(self):
         """Register the trace_callback only on demand"""
-        if self._code_info:
+        if self._code_infos:
             sys.settrace(self._trace_callback)
 
     def _reset_cuda_stats(self):
@@ -239,8 +239,8 @@ class LineProfiler:
             return self._trace_callback
 
         code_hash = hash(frame.f_code)
-        if event in ['line', 'return'] and code_hash in self._code_info:
-            code_info = self._code_info[code_hash]
+        if event in ['line', 'return'] and code_hash in self._code_infos:
+            code_info = self._code_infos[code_hash]
             with torch.cuda.device(self.target_gpu):
                 self._raw_line_records.append({
                     'codehash': code_hash, 
@@ -265,7 +265,7 @@ class LineProfiler:
         
         https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
         """
-        line_records = _line_records(self._raw_line_records, self._code_info)
+        line_records = _line_records(self._raw_line_records, self._code_infos)
         return _subset_line_records(line_records, func, columns)
 
     def display(self, func=None, columns=DEFAULT_COLUMNS):
@@ -277,7 +277,7 @@ class LineProfiler:
         
         To work, this needs to be the last thing returned in the IPython statement or cell.
         """ 
-        return RecordsDisplay(self.line_records(func, columns), self._code_info)
+        return RecordsDisplay(self.line_records(func, columns), self._code_infos)
 
     def print_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=sys.stdout):
         stream.write(repr(self.display(func, columns)))
