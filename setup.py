@@ -29,6 +29,7 @@ setup(
     ],
     extras_require={
         'ipython': ['IPython>=0.13'],
+        'test': ['pytest'],
     },
     packages=['pytorch_memlab'],
 )
