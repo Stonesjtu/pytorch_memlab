@@ -34,7 +34,7 @@ class MemlabMagics(Magics):
     @argument('-d',
               '--default_column',
               action='store_true',
-              help=f'Display the default columns of {", ".join(DEFAULT_COLUMNS)})')
+              help='Display the default columns of ' + ", ".join(DEFAULT_COLUMNS))
     @argument('-r',
               '--return-profiler',
               action='store_true',

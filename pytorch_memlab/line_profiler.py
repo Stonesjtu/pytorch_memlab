@@ -71,7 +71,8 @@ def _subset_line_records(line_records, func=None, columns=None):
         if not all(len(c) == 3 for c in columns):
             raise ValueError('Each column name should have three dot-separated parts')
         if not all(c in line_records.columns for c in columns):
-            raise ValueError(f'The column names should be fields of torch.cuda.memory_stat(). Options are: {", ".join(".".join(c) for c in records.columns.tolist())}')
+            options = ", ".join(".".join(c) for c in line_records.columns.tolist())
+            raise ValueError('The column names should be fields of torch.cuda.memory_stat(). Options are: ' + options)
         line_records = line_records.loc[:, columns]
     
     return line_records
@@ -112,12 +113,12 @@ class RecordsDisplay:
 
         string = {}
         for qual_name, merged in self._line_records_merged_with_code().items():
-            maxlen = max(map(len, merged.code))
+            left_align = '{{:{maxlen}s}}'.format(maxlen=max(map(len, merged.code)))
             merged[byte_cols] = merged[byte_cols].applymap(readable_size)
-            merged['code'] = merged['code'].apply(lambda l: f'{{:{maxlen}s}}'.format(l.rstrip('\n\r')))
+            merged['code'] = merged['code'].apply(lambda l: left_align.format(l.rstrip('\n\r')))
             string[qual_name] = merged.to_string(index=False)
 
-        return '\n\n\n'.join([f'## {q}\n\n{c}' for q, c in string.items()])
+        return '\n\n\n'.join(['## {q}\n\n{c}'.format(q=q, c=c) for q, c in string.items()])
 
     def _repr_html_(self):
         """Renders the stats as HTML"""
