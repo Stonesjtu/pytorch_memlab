@@ -26,6 +26,7 @@ setup(
     install_requires=[
         'setuptools',
         'calmsize',
+        'pandas>=0.18'
     ],
     extras_require={
         'ipython': ['IPython>=0.13'],

@@ -1,7 +1,17 @@
 import pytest
 import torch
+import numpy as np
 
 from pytorch_memlab import LineProfiler, profile, profile_every, set_target_gpu
+
+def test_records():
+
+    def alloc_8b():
+        torch.tensor((1,)).cuda()
+    
+    with LineProfiler(alloc_8b) as prof:
+        alloc_8b()
+    records = prof.records()
 
 
 def test_line_report():
@@ -110,3 +120,4 @@ def test_line_report_profile_interrupt():
     work()
     work2()
     raise KeyboardInterrupt
+_code_info
