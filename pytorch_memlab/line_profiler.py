@@ -62,7 +62,7 @@ def _line_records(raw_line_records, code_infos):
 
     return records
 
-def _subset_line_records(line_records, func=None, columns=None):
+def _extract_line_records(line_records, func=None, columns=None):
     """Extracts the subset of a line_records dataframe pertinent to a given set of functions and
     columns"""
     if func is not None:
@@ -93,7 +93,7 @@ class RecordsDisplay:
             self._line_records = line_records
         self._code_infos = code_infos
 
-    def _line_records_merged_with_code(self):
+    def _merge_line_records_with_code(self):
         merged = {}
         for _, info in self._code_infos.items():
             qual_name = info['func'].__qualname__
@@ -118,7 +118,7 @@ class RecordsDisplay:
         byte_cols = self._line_records.columns[is_byte_col]
 
         string = {}
-        for qual_name, merged in self._line_records_merged_with_code().items():
+        for qual_name, merged in self._merge_line_records_with_code().items():
             maxlen = max(len(c) for c in merged.code)
             left_align = '{{:{maxlen}s}}'.format(maxlen=maxlen)
             merged[byte_cols] = merged[byte_cols].applymap(readable_size)
@@ -143,7 +143,7 @@ class RecordsDisplay:
         maxes = self._line_records.max()
 
         html = {}
-        for qual_name, merged in self._line_records_merged_with_code().items():
+        for qual_name, merged in self._merge_line_records_with_code().items():
 
             style = merged.style
 
@@ -299,7 +299,7 @@ class LineProfiler:
             return pd.DataFrame(index=pd.MultiIndex.from_product([[], []]), columns=columns)
 
         line_records = _line_records(self._raw_line_records, self._code_infos)
-        return _subset_line_records(line_records, func, columns)
+        return _extract_line_records(line_records, func, columns)
 
     def display(self, func=None, columns=DEFAULT_COLUMNS):
         """Returns an object that'll display the recorded stats in the IPython console.
