@@ -119,7 +119,8 @@ class RecordsDisplay:
 
         string = {}
         for qual_name, merged in self._line_records_merged_with_code().items():
-            left_align = '{{:{maxlen}s}}'.format(maxlen=max(map(len, merged.code)))
+            maxlen = max(len(c) for c in merged.code)
+            left_align = '{{:{maxlen}s}}'.format(maxlen=maxlen)
             merged[byte_cols] = merged[byte_cols].applymap(readable_size)
 
             # This is a mess, but I can't find any other way to left-align text strings.
