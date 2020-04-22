@@ -2,7 +2,7 @@ import pytest
 import torch
 import numpy as np
 
-from pytorch_memlab import LineProfiler, profile, profile_every, set_target_gpu, reset_global_line_profiler
+from pytorch_memlab import LineProfiler, profile, profile_every, set_target_gpu, clear_global_line_profiler
 
 def test_display():
 
@@ -57,7 +57,7 @@ def test_line_report():
     line_profiler.print_stats()
 
 def test_line_report_decorator():
-    reset_global_line_profiler()
+    clear_global_line_profiler()
 
     @profile_every(output_interval=3)
     def work():
@@ -78,7 +78,7 @@ def test_line_report_decorator():
     work()
 
 def test_line_report_method():
-    reset_global_line_profiler()
+    clear_global_line_profiler()
 
     class Net(torch.nn.Module):
         def __init__(self):
@@ -95,7 +95,7 @@ def test_line_report_method():
     net(inp)
 
 def test_line_report_profile():
-    reset_global_line_profiler()
+    clear_global_line_profiler()
 
     @profile
     def work():
@@ -108,7 +108,7 @@ def test_line_report_profile():
     work()
 
 def test_line_report_profile_set_gpu():
-    reset_global_line_profiler()
+    clear_global_line_profiler()
 
     @profile
     def work():
@@ -123,7 +123,7 @@ def test_line_report_profile_set_gpu():
     work()
 
 def test_line_report_profile_interrupt():
-    reset_global_line_profiler()
+    clear_global_line_profiler()
 
     @profile
     def work():

@@ -132,7 +132,8 @@ class RecordsDisplay:
         return '\n\n\n'.join(['## {q}\n\n{c}'.format(q=q, c=c) for q, c in string.items()])
 
     def _repr_html_(self):
-        """Renders the stats as HTML"""
+        """Renders the stats as HTML
+        """
         if len(self._line_records) == 0:
             return '<p>No data collected</p>'
 
@@ -254,6 +255,12 @@ class LineProfiler:
         self.enabled = False
         sys.settrace(None)
 
+    def clear(self):
+        """Clears the state of the line profiler
+        """
+        self._code_infos = {}
+        self._raw_line_records = []
+
     def _trace_callback(self, frame, event, arg):
         """Trace the execution of python line-by-line"""
 
@@ -310,13 +317,13 @@ class LineProfiler:
     def print_func_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=sys.stdout):
         self.print_stats(func, columns, stream)
 
-global_line_profiler = None
-def reset_global_line_profiler():
-    """Resets the global line profiler"""
-    global global_line_profiler
-    global_line_profiler = LineProfiler()
-    global_line_profiler.enable()
-reset_global_line_profiler()
+global_line_profiler = LineProfiler()
+global_line_profiler.enable()
+
+def clear_global_line_profiler():
+    """Clears the state of the global line profiler
+    """
+    global_line_profiler.clear()
 
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
