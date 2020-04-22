@@ -314,9 +314,6 @@ class LineProfiler:
     def print_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=sys.stdout):
         stream.write(repr(self.display(func, columns)))
 
-    def print_func_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=sys.stdout):
-        self.print_stats(func, columns, stream)
-
 global_line_profiler = LineProfiler()
 global_line_profiler.enable()
 
@@ -375,7 +372,7 @@ def profile(func, columns=DEFAULT_COLUMNS):
     global_line_profiler.add_function(func)
 
     def print_stats_atexit():
-        global_line_profiler.print_func_stats(func, columns)
+        global_line_profiler.print_stats(func, columns)
     atexit.register(print_stats_atexit)
 
     return func
@@ -409,7 +406,8 @@ def profile_every(output_interval=1, enable=True, columns=DEFAULT_COLUMNS):
             res = func(*args, **kwargs)
             if enable:
                 if func.cur_idx % output_interval == 0:
-                    global_line_profiler.print_func_stats(func, columns)
+                    global_line_profiler.print_stats(func, columns)
+
                 func.cur_idx += 1
             return res
 
