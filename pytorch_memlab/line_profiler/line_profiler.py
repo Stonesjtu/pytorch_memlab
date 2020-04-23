@@ -126,8 +126,6 @@ class LineProfiler:
             elif event == 'return':
                 code_info['prev_line'] = code_info['first_line']
                 code_info['prev_record'] = -1
-            else:
-                assert False
 
     def display(self, func=None, columns=DEFAULT_COLUMNS):
         """Display the profiling results on either IPython or CLI
