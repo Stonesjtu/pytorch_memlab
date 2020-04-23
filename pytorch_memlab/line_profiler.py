@@ -1,26 +1,173 @@
-import os
 import sys
 import inspect
-from collections import defaultdict
 from functools import wraps
-
 import torch
+import pandas as pd
 from .utils import readable_size
 
+# Seaborn's `muted` color cycle
+COLORS = [
+    '#4878d0', '#ee854a', '#6acc64', '#d65f5f', '#956cb4', 
+    '#8c613c', '#dc7ec0', '#797979', '#d5bb67', '#82c6e2']
 
-def set_target_gpu(gpu_id):
-    """Set the target GPU id to profile memory
+DEFAULT_COLUMNS = ['active_bytes.all.peak', 'reserved_bytes.all.peak']
 
-    Because of the lack of output space, only one GPU's memory usage is shown
-    in line profiler. However you can use this function to switch target GPU
-    to profile on. The GPU switch can be performed before profiling and even
-    in the profiled functions.
+def _accumulate_line_records(raw_line_records):
+    """The raw records give the memory stats between successive lines executed by the profiler.
+    But we want the memory stats between successive lines in our functions! The two diverge when 
+    a function we're profiling calls another function we're profiling, since then Torch will have
+    its peak/allocated/freed memory stats reset on each line of the called function. 
 
-    Args:
-        - gpu_id: cuda index to profile the memory on,
-        also accepts `torch.device` object.
+    To fix that, here we look at each line record in turn, and for peak stats we take the 
+    maximum since the last record _in the same function_. For allocated/freed stats, we take the 
+    sum since the last record in the same function.
     """
-    global_line_profiler.target_gpu = gpu_id
+
+    # We'll do this in numpy because indexing lots of rows and columns in pandas is dog-slow. 
+    raw = pd.DataFrame(raw_line_records)
+    acc_mask = raw.columns.str.match(r'.*(allocated|freed)$')
+    peak_mask = raw.columns.str.match(r'.*(peak)$')
+    acc_raw, peak_raw = raw.loc[:, acc_mask].values, raw.loc[:, peak_mask].values
+    acc_refined, peak_refined = acc_raw.copy(), peak_raw.copy()
+
+    for row, record in enumerate(raw_line_records):
+        if record['prev_record_idx'] == -1:
+            # No previous data to accumulate from
+            continue
+        if record['prev_record_idx'] == row-1:
+            # Previous record was the previous line, so no need to accumulate anything
+            continue
+
+        # Another profiled function has been called since the last record, so we need to
+        # accumulate the allocated/freed/peaks of the intervening records into this one. 
+        acc_refined[row] = acc_raw[record['prev_record_idx']+1:row+1].sum(0)
+        peak_refined[row] = peak_raw[record['prev_record_idx']+1:row+1].max(0)
+
+    refined = raw.copy()
+    refined.loc[:, acc_mask] = acc_refined
+    refined.loc[:, peak_mask] = peak_refined    
+    return refined
+
+def _line_records(raw_line_records, code_infos):
+    """Converts the raw line records to a nicely-shaped dataframe whose values reflect 
+    the memory usage of lines of _functions_ rather than lines of _execution_. See the 
+    `_accumulate_line_records` docstring for more detail."""
+    # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
+    qual_names = {code_hash: info['func'].__qualname__ for code_hash, info in code_infos.items()}
+    records = (_accumulate_line_records(raw_line_records)
+                    .assign(qual_name=lambda df: df.code_hash.map(qual_names))
+                    .set_index(['qual_name', 'line'])
+                    .drop(['code_hash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], 1))
+    records.columns = pd.MultiIndex.from_tuples([c.split('.') for c in records.columns])
+
+    return records
+
+def _extract_line_records(line_records, func=None, columns=None):
+    """Extracts the subset of a line_records dataframe pertinent to a given set of functions and
+    columns"""
+    if func is not None:
+        # Support both passing the function directly and passing a qual name/list of qual names
+        line_records = line_records.loc[[func.__qualname__] if callable(func) else func]
+
+    if columns is not None: 
+        columns = [tuple(c.split('.')) for c in columns]
+        if not all(len(c) == 3 for c in columns):
+            raise ValueError('Each column name should have three dot-separated parts')
+        if not all(c in line_records.columns for c in columns):
+            options = ", ".join(".".join(c) for c in line_records.columns.tolist())
+            raise ValueError('The column names should be fields of torch.cuda.memory_stat(). Options are: ' + options)
+        line_records = line_records.loc[:, columns]
+    
+    return line_records
+
+
+class RecordsDisplay:
+    """IPython's rich display functionality [requires we return](https://ipython.readthedocs.io/en/stable/config/integrating.html)
+    an object that has a `_repr_html_` method for when HTML rendering is supported, and 
+    a `__repr__` method for when only text is available"""
+
+    def __init__(self, line_records, code_infos):
+        if len(line_records) > 0:
+            self._line_records = line_records.groupby(level=[0, 1]).max() 
+        else:
+            self._line_records = line_records
+        self._code_infos = code_infos
+
+    def _merge_line_records_with_code(self):
+        merged = {}
+        for _, info in self._code_infos.items():
+            qual_name = info['func'].__qualname__
+            if qual_name in self._line_records.index.get_level_values(0):
+                lines, start_line = inspect.getsourcelines(info['func'])
+                lines = pd.DataFrame.from_dict({
+                    'line': range(start_line, start_line + len(lines)), 
+                    'code': lines})
+                lines.columns = pd.MultiIndex.from_product([lines.columns, [''], ['']])
+                
+                merged[qual_name] = pd.merge(
+                    self._line_records.loc[qual_name], lines, 
+                    right_on='line', left_index=True, how='right')
+        return merged
+
+    def __repr__(self):
+        """Renders the stats as text"""
+        if len(self._line_records) == 0:
+            return 'No data collected'
+
+        is_byte_col = self._line_records.columns.get_level_values(0).str.contains('byte')
+        byte_cols = self._line_records.columns[is_byte_col]
+
+        string = {}
+        for qual_name, merged in self._merge_line_records_with_code().items():
+            maxlen = max(len(c) for c in merged.code)
+            left_align = '{{:{maxlen}s}}'.format(maxlen=maxlen)
+            merged[byte_cols] = merged[byte_cols].applymap(readable_size)
+
+            # This is a mess, but I can't find any other way to left-align text strings.
+            code_header = (left_align.format('code'), '', '')
+            merged[code_header] = merged['code'].apply(lambda l: left_align.format(l.rstrip('\n\r')))
+            merged = merged.drop('code', 1, level=0)
+
+            string[qual_name] = merged.to_string(index=False)
+
+        return '\n\n\n'.join(['## {q}\n\n{c}'.format(q=q, c=c) for q, c in string.items()])
+
+    def _repr_html_(self):
+        """Renders the stats as HTML
+        """
+        if len(self._line_records) == 0:
+            return '<p>No data collected</p>'
+
+        is_byte_col = self._line_records.columns.get_level_values(0).str.contains('byte')
+        byte_cols = self._line_records.columns[is_byte_col]
+        maxes = self._line_records.max()
+
+        html = {}
+        for qual_name, merged in self._merge_line_records_with_code().items():
+
+            style = merged.style
+
+            # Style the bar charts
+            for i, c in enumerate(self._line_records.columns):
+                style = style.bar([c], color=COLORS[i % len(COLORS)], 
+                                width=99, vmin=0, vmax=maxes[c])
+
+            # Style the text
+            html[qual_name] = (style
+                                .format({c: readable_size for c in byte_cols})
+                                .set_properties(
+                                    subset=['code'], **{
+                                        'text-align': 'left', 
+                                        'white-space': 'pre', 
+                                        'font-family': 'monospace'})
+                                .set_table_styles([{
+                                    'selector': 'th', 
+                                    'props': [('text-align', 'left')]}]) 
+                                .hide_index()
+                                .render())
+
+        template = '<h3><span style="font-family: monospace">{q}</span></h3><div>{c}</div>'
+        return '\n'.join(template.format(q=q, c=c) for q, c in html.items())
 
 
 class LineProfiler:
@@ -36,20 +183,21 @@ class LineProfiler:
         ```python
         with LineProfiler(func) as lp:
             func
-        lp.print_stats()
+        lp.display()
 
+        ```python
         lp = LineProfiler(func)
         lp.enable()
         func()
         lp.disable()
-        lp.print_stats()
+        lp.display()
         ```
     """
 
-    def __init__(self, *functions, **kwargs):
-        self.target_gpu = kwargs.get('target_gpu', 0)
-        self.functions = []
-        self.code_map = {}
+    def __init__(self, *functions, target_gpu=0, **kwargs):
+        self.target_gpu = target_gpu
+        self._code_infos = {}
+        self._raw_line_records = []
         self.enabled = False
         for func in functions:
             self.add_function(func)
@@ -58,20 +206,20 @@ class LineProfiler:
         """ Record line profiling information for the given Python function.
         """
         try:
-            code = func.__code__
+            # We need to use the hash here because pandas will later expect something 
+            # orderable for its index
+            code_hash = hash(func.__code__)
         except AttributeError:
             import warnings
             warnings.warn("Could not extract a code object for the object %r" % (func,))
             return
-        if code not in self.code_map:
-            self.code_map[code] = {}
-            self.code_map[code]['line_stat'] = defaultdict(list)
-            # probable memory leak if holding this ref
-            self.code_map[code]['func'] = func
-            self.code_map[code]['func_name'] = func.__name__
-            self.functions.append(func)
-            self.code_map[code]['source_code'] = inspect.getsourcelines(func)
-            self.code_map[code]['last_lineno'] = -1
+        if code_hash not in self._code_infos:
+            first_line = inspect.getsourcelines(func)[1]
+            self._code_infos[code_hash] = {
+                'func': func, 
+                'first_line': first_line,
+                'prev_line': first_line, 
+                'prev_record': -1}
 
         # re-register the newer trace_callback
         if self.enabled:
@@ -79,107 +227,125 @@ class LineProfiler:
 
     def __enter__(self):
         self.enable()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disable()
 
     def register_callback(self):
         """Register the trace_callback only on demand"""
-        if self.functions:
-            sys.settrace(self.trace_callback)
+        if self._code_infos:
+            sys.settrace(self._trace_callback)
+
+    def _reset_cuda_stats(self):
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.reset_accumulated_memory_stats()
 
     def enable(self):
         self.enabled = True
+
+        try:
+            torch.cuda.empty_cache()
+            self._reset_cuda_stats()
+        except AssertionError as e:
+            print('Could not reset CUDA stats and cache: ' + str(e))
+
         self.register_callback()
 
     def disable(self):
         self.enabled = False
         sys.settrace(None)
 
-    def trace_callback(self, frame, event, arg):
+    def clear(self):
+        """Clears the state of the line profiler
+        """
+        self._code_infos = {}
+        self._raw_line_records = []
+
+    def _trace_callback(self, frame, event, arg):
         """Trace the execution of python line-by-line"""
 
         if event == 'call':
-            return self.trace_callback
+            return self._trace_callback
 
-        if event in ['line', 'return'] and frame.f_code in self.code_map:
-            line_stat = self.code_map[frame.f_code]['line_stat']
+        code_hash = hash(frame.f_code)
+        if event in ['line', 'return'] and code_hash in self._code_infos:
+            code_info = self._code_infos[code_hash]
             with torch.cuda.device(self.target_gpu):
-                allocated_memory = torch.cuda.memory_allocated()
-                cached_memory = torch.cuda.memory_cached()
-                torch.cuda.empty_cache()
-            if event == 'return':
-                lineno = max(line_stat.keys()) + 1
+                self._raw_line_records.append({
+                    'code_hash': code_hash, 
+                    'line': code_info['prev_line'],
+                    'prev_record_idx': code_info['prev_record'],
+                    **torch.cuda.memory_stats()})
+                self._reset_cuda_stats()
+
+            if event == 'line':
+                code_info['prev_line'] = frame.f_lineno
+                code_info['prev_record'] = len(self._raw_line_records)-1
+            elif event == 'return':
+                code_info['prev_line'] = code_info['first_line']
+                code_info['prev_record'] = -1
             else:
-                lineno = frame.f_lineno
-            last_lineno = self.code_map[frame.f_code]['last_lineno']
-            line_stat[last_lineno].append((allocated_memory, cached_memory))
-            self.code_map[frame.f_code]['last_lineno'] = lineno
-        return
+                assert False
 
-    def print_stats(self, stream=None):
-        """Print the stat of each functions
+    def line_records(self, func=None, columns=DEFAULT_COLUMNS):
+        """Returns a (line, statistic)-indexed dataframe of memory stats.
+        
+        The columns are explained in the PyTorch documentation:
+        
+        https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
         """
-        for code, stat in self.code_map.items():
-            show_func(
-                filename=code.co_filename,
-                trace_stat=stat,
-                stream=stream
-            )
+        if len(self._raw_line_records) == 0:
+            return pd.DataFrame(index=pd.MultiIndex.from_product([[], []]), columns=columns)
 
-    def print_func_stats(self, func, stream=None):
-        """Print the stat of a registered function"""
-        code = func.__code__
-        if code in self.code_map:
-            show_func(
-                filename=code.co_filename,
-                trace_stat=self.code_map[code],
-                stream=stream
-            )
+        line_records = _line_records(self._raw_line_records, self._code_infos)
+        return _extract_line_records(line_records, func, columns)
 
+    def display(self, func=None, columns=DEFAULT_COLUMNS):
+        """Returns an object that'll display the recorded stats in the IPython console.
+
+        The columns are explained in the PyTorch documentation:
+        
+        https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
+        
+        To work, this needs to be the last thing returned in the IPython statement or cell.
+        """ 
+        return RecordsDisplay(self.line_records(func, columns), self._code_infos)
+
+    def print_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=sys.stdout):
+        stream.write(repr(self.display(func, columns)))
 
 global_line_profiler = LineProfiler()
 global_line_profiler.enable()
 
+def clear_global_line_profiler():
+    """Clears the state of the global line profiler
+    """
+    global_line_profiler.clear()
 
-def profile_every(output_interval=1, enable=True):
-    """Profile the CUDA memory usage of target function line by line
+def set_target_gpu(gpu_id):
+    """Set the target GPU id to profile memory
 
-    Prints the profiling output every `output_interval` execution of the target
-    function
-    The CUDA memory is collected only on the **current** cuda device.
+    Because of the lack of output space, only one GPU's memory usage is shown
+    in line profiler. However you can use this function to switch target GPU
+    to profile on. The GPU switch can be performed before profiling and even
+    in the profiled functions.
 
     Args:
-        - func: the function or method to profile on
-        - enable: whether to enable the profiling mode, so users don't have to
-        modify any source code for enabling and disabling profiling.
-        - output interval: frequency of output the profiling results
+        - gpu_id: cuda index to profile the memory on,
+        also accepts `torch.device` object.
     """
+    global_line_profiler.target_gpu = gpu_id
 
-    def inner_decorator(func):
-        func.cur_idx = 1
-
-        if enable:
-            global_line_profiler.add_function(func)
-
-        @wraps(func)
-        def run_func(*args, **kwargs):
-            res = func(*args, **kwargs)
-            if enable:
-                if func.cur_idx % output_interval == 0:
-                    global_line_profiler.print_func_stats(func)
-                func.cur_idx += 1
-            return res
-
-        return run_func
-    return inner_decorator
-
-
-def profile(func):
+def profile(func, columns=DEFAULT_COLUMNS):
     """Profile the CUDA memory usage of target function line by line
 
     The profiling results will be printed at exiting, KeyboardInterrupt raised.
     The CUDA memory is collected only on the **current** cuda device.
+        
+    The columns are explained in the PyTorch documentation:
+    
+    https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
 
     Usage:
         ```python
@@ -207,65 +373,45 @@ def profile(func):
     global_line_profiler.add_function(func)
 
     def print_stats_atexit():
-        global_line_profiler.print_func_stats(func)
+        global_line_profiler.print_stats(func, columns)
     atexit.register(print_stats_atexit)
 
     return func
 
+def profile_every(output_interval=1, enable=True, columns=DEFAULT_COLUMNS):
+    """Profile the CUDA memory usage of target function line by line
 
-def show_func(filename, trace_stat, stream=None):
-    """ Show results for a single function.
+    Prints the profiling output every `output_interval` execution of the target
+    function
+    The CUDA memory is collected only on the **current** cuda device.
+        
+    The columns are explained in the PyTorch documentation:
+    
+    https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
+
+    Args:
+        - func: the function or method to profile on
+        - enable: whether to enable the profiling mode, so users don't have to
+        modify any source code for enabling and disabling profiling.
+        - output interval: frequency of output the profiling results
     """
-    if stream is None:
-        stream = sys.stdout
 
-    template = '%6s %9s %12s %8s %8s  %-s'
-    func_name = trace_stat['func_name']
+    def inner_decorator(func):
+        func.cur_idx = 1
 
-    linenos = list(trace_stat['line_stat'].keys())
-    start_lineno = trace_stat['source_code'][1]
+        if enable:
+            global_line_profiler.add_function(func)
 
-    stream.write("File: %s\n" % filename)
-    stream.write("Function: %s at line %s\n" % (func_name, start_lineno))
-    sublines = trace_stat['source_code'][0]
+        @wraps(func)
+        def run_func(*args, **kwargs):
+            res = func(*args, **kwargs)
+            if enable:
+                if func.cur_idx % output_interval == 0:
+                    global_line_profiler.print_stats(func, columns)
 
-    prev_max_allocated = 0
-    prev_max_cached = 0
-    lineno_mem = {}
-    # .items ensure the returned tuple is sorted by key (lineno)
-    for lineno, line_stat in trace_stat['line_stat'].items():
-        all_allocated_memory = [ls[0] for ls in line_stat]
-        all_cached_memory = [ls[1] for ls in line_stat]
-        max_allocated = max(all_allocated_memory)
-        max_cached = max(all_cached_memory)
+                func.cur_idx += 1
+            return res
 
-        # the first line_stat is for the very beginning of function
-        if lineno != -1:
-            lineno_mem[lineno] = (
-                readable_size(max_allocated),
-                readable_size(max_cached),
-                readable_size(max_allocated - prev_max_allocated),
-                readable_size(max_cached - prev_max_cached),
-            )
+        return run_func
+    return inner_decorator
 
-        prev_max_allocated = max_allocated
-        prev_max_cached = max_cached
-
-    linenos = range(start_lineno, start_lineno + len(sublines))
-    empty = ('', '', '', '')
-    header = template % ('Line #', 'Max usage', 'Peak usage', 'diff max',
-                         'diff peak', 'Line Contents')
-    stream.write('\n')
-    stream.write(header)
-    stream.write('\n')
-    stream.write('=' * len(header))
-    stream.write('\n')
-    for lineno, line in zip(linenos, sublines):
-        show_line_stat = lineno_mem.get(lineno, empty)
-        max_usage, peak_usage, diff_max, diff_peak = show_line_stat
-        txt = template % (lineno, max_usage, peak_usage, diff_max, diff_peak,
-                          line.rstrip('\n').rstrip('\r'))
-        stream.write(txt)
-        stream.write('\n')
-    stream.write('\n')
-    stream.flush()

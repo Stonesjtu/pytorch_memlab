@@ -52,43 +52,51 @@ the memory usage info for each line of code in the specified function/method.
 
 ```python
 import torch
-from pytorch_memlab import profile
-@profile
-def work():
+from pytorch_memlab import LineProfiler
+
+def inner():
+    torch.nn.Linear(100, 100).cuda()
+
+def outer():
     linear = torch.nn.Linear(100, 100).cuda()
     linear2 = torch.nn.Linear(100, 100).cuda()
-    linear3 = torch.nn.Linear(100, 100).cuda()
+    inner()
     
-work()
+with LineProfiler(outer, inner) as prof:
+    outer()
+prof.display()
 ```
 
 After the script finishes or interrupted by keyboard, it gives the following
-profiling info.
+profiling info if you're in a Jupyter notebook:
+
+<p align="center"><img src="readme-output.png" width="640"></p>
+
+or the following info if you're in a text-only terminal:
 
 ```
-Function: work at line 71
+## outer
 
-Line # Max usage   Peak usage diff max diff peak  Line Contents
-===============================================================
-71                                               @profile
-72                                               def work():
-73                                                   # comment
-74   885.00K        1.00M   40.00K    0.00B          linear = torch.nn.Linear(100, 100).cuda()
-75   925.00K        1.00M   40.00K    0.00B          linear_2 = torch.nn.Linear(100, 100).cuda()
-76   965.00K        1.00M   40.00K    0.00B          linear_3 = torch.nn.Linear(100, 100).cuda()
+active_bytes reserved_bytes line  code                                           
+         all            all                                                      
+        peak           peak                                                      
+       0.00B          0.00B    7  def outer():                                   
+      40.00K          2.00M    8      linear = torch.nn.Linear(100, 100).cuda()  
+      80.00K          2.00M    9      linear2 = torch.nn.Linear(100, 100).cuda() 
+     120.00K          2.00M   10      inner()                                    
 
+
+## inner
+
+active_bytes reserved_bytes line  code                                 
+         all            all                                            
+        peak           peak                                            
+      80.00K          2.00M    4  def inner():                         
+     120.00K          2.00M    5      torch.nn.Linear(100, 100).cuda()  
 ```
 
-terminology:
-  - `Max usage`: the max of pytorch's allocated memory (the finish memory)
-  The memory usage after this line is executed.
-  - `Peak usage`: the max of pytorch's cached memory (the peak memory)
-  The peak memory usage during the execution of this line. Pytorch caches
-  1M CUDA memory as atomic memory, so the cached memory is unchanged in the
-  sample above.
-  - `diff max`: the `Max memory` usage difference caused by this line
-  - `diff peak`: the `Peak memory` usage difference caused by this line
-
+An explanation of what each column means can be found in the [Torch documentation](https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats). The name of any field from `memory_stats()`
+can be passed to `display()` to view the corresponding statistic.
 
 If you use `profile` decorator, the memory statistics are collected during
 multiple runs and only the maximum one is displayed at the end.

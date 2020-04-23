@@ -1,4 +1,5 @@
 calmsize
-torch
+torch>=1.4
 future
 ipython
+pandas>=0.18

@@ -1,6 +1,6 @@
 from .courtesy import Courtesy
 from .mem_reporter import MemReporter
-from .line_profiler import LineProfiler, profile, profile_every, set_target_gpu
+from .line_profiler import LineProfiler, profile, profile_every, set_target_gpu, clear_global_line_profiler
 try:
     from .extension import load_ipython_extension
 except ImportError:
