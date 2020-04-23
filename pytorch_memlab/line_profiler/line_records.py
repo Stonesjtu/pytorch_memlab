@@ -88,21 +88,16 @@ def _extract_line_records(line_records, func=None, columns=None):
 
 class LineRecords:
     """Class for processing raw line records and display on IPython & CLI
-
-    IPython's rich display functionality [requires we return](https://ipython.readthedocs.io/en/stable/config/integrating.html)
-    an object that has a `_repr_html_` method for when HTML rendering is supported, and
-    a `__repr__` method for when only text is available
     """
 
     def __init__(self, raw_line_records, code_infos):
         super().__init__()
         self._raw_line_records = raw_line_records
         self._code_infos = code_infos
-        self._line_records = None
 
     def display(self, func, columns):
-        self._line_records = self._filter_raw_line_records(func, columns)
-        return self
+        line_records = self._filter_raw_line_records(func, columns)
+        return RecordsDisplay(line_records, self._code_infos)
 
     def _filter_raw_line_records(self, func, columns):
         """Get the line records
@@ -130,8 +125,22 @@ class LineRecords:
 
         return line_records
 
+
+class RecordsDisplay:
+    """Class for processing raw line records and display on IPython & CLI
+
+    IPython's rich display functionality [requires we return](https://ipython.readthedocs.io/en/stable/config/integrating.html)
+    an object that has a `_repr_html_` method for when HTML rendering is supported, and
+    a `__repr__` method for when only text is available
+    """
+    def __init__(self, line_records, code_infos):
+        super().__init__()
+        self._line_records = line_records
+        self._code_infos = code_infos
+        self._merged_line_records = self._merge_line_records_with_code()
+
     def _merge_line_records_with_code(self):
-        merged = {}
+        merged_records = {}
         for _, info in self._code_infos.items():
             qual_name = info['func'].__qualname__
             if qual_name in self._line_records.index.get_level_values(0):
@@ -141,10 +150,10 @@ class LineRecords:
                     'code': lines})
                 lines.columns = pd.MultiIndex.from_product([lines.columns, [''], ['']])
 
-                merged[qual_name] = pd.merge(
+                merged_records[qual_name] = pd.merge(
                     self._line_records.loc[qual_name], lines,
                     right_on='line', left_index=True, how='right')
-        return merged
+        return merged_records
 
     def __repr__(self):
         """Renders the stats as text"""
