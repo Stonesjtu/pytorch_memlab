@@ -7,23 +7,25 @@ from .utils import readable_size
 
 # Seaborn's `muted` color cycle
 COLORS = [
-    '#4878d0', '#ee854a', '#6acc64', '#d65f5f', '#956cb4', 
-    '#8c613c', '#dc7ec0', '#797979', '#d5bb67', '#82c6e2']
+    '#4878d0', '#ee854a', '#6acc64', '#d65f5f', '#956cb4',
+    '#8c613c', '#dc7ec0', '#797979', '#d5bb67', '#82c6e2',
+]
 
 DEFAULT_COLUMNS = ['active_bytes.all.peak', 'reserved_bytes.all.peak']
 
+
 def _accumulate_line_records(raw_line_records):
     """The raw records give the memory stats between successive lines executed by the profiler.
-    But we want the memory stats between successive lines in our functions! The two diverge when 
+    But we want the memory stats between successive lines in our functions! The two diverge when
     a function we're profiling calls another function we're profiling, since then Torch will have
-    its peak/allocated/freed memory stats reset on each line of the called function. 
+    its peak/allocated/freed memory stats reset on each line of the called function.
 
-    To fix that, here we look at each line record in turn, and for peak stats we take the 
-    maximum since the last record _in the same function_. For allocated/freed stats, we take the 
+    To fix that, here we look at each line record in turn, and for peak stats we take the
+    maximum since the last record _in the same function_. For allocated/freed stats, we take the
     sum since the last record in the same function.
     """
 
-    # We'll do this in numpy because indexing lots of rows and columns in pandas is dog-slow. 
+    # We'll do this in numpy because indexing lots of rows and columns in pandas is dog-slow.
     raw = pd.DataFrame(raw_line_records)
     acc_mask = raw.columns.str.match(r'.*(allocated|freed)$')
     peak_mask = raw.columns.str.match(r'.*(peak)$')
@@ -39,28 +41,32 @@ def _accumulate_line_records(raw_line_records):
             continue
 
         # Another profiled function has been called since the last record, so we need to
-        # accumulate the allocated/freed/peaks of the intervening records into this one. 
+        # accumulate the allocated/freed/peaks of the intervening records into this one.
         acc_refined[row] = acc_raw[record['prev_record_idx']+1:row+1].sum(0)
         peak_refined[row] = peak_raw[record['prev_record_idx']+1:row+1].max(0)
 
     refined = raw.copy()
     refined.loc[:, acc_mask] = acc_refined
-    refined.loc[:, peak_mask] = peak_refined    
+    refined.loc[:, peak_mask] = peak_refined
     return refined
 
+
 def _line_records(raw_line_records, code_infos):
-    """Converts the raw line records to a nicely-shaped dataframe whose values reflect 
-    the memory usage of lines of _functions_ rather than lines of _execution_. See the 
+    """Converts the raw line records to a nicely-shaped dataframe whose values reflect
+    the memory usage of lines of _functions_ rather than lines of _execution_. See the
     `_accumulate_line_records` docstring for more detail."""
     # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
-    qual_names = {code_hash: info['func'].__qualname__ for code_hash, info in code_infos.items()}
+    qual_names = {
+        code_hash: info['func'].__qualname__ for code_hash, info in code_infos.items()}
     records = (_accumulate_line_records(raw_line_records)
-                    .assign(qual_name=lambda df: df.code_hash.map(qual_names))
-                    .set_index(['qual_name', 'line'])
-                    .drop(['code_hash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], 1))
-    records.columns = pd.MultiIndex.from_tuples([c.split('.') for c in records.columns])
+               .assign(qual_name=lambda df: df.code_hash.map(qual_names))
+               .set_index(['qual_name', 'line'])
+               .drop(['code_hash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], 1))
+    records.columns = pd.MultiIndex.from_tuples(
+        [c.split('.') for c in records.columns])
 
     return records
+
 
 def _extract_line_records(line_records, func=None, columns=None):
     """Extracts the subset of a line_records dataframe pertinent to a given set of functions and
@@ -69,26 +75,31 @@ def _extract_line_records(line_records, func=None, columns=None):
         # Support both passing the function directly and passing a qual name/list of qual names
         line_records = line_records.loc[[func.__qualname__] if callable(func) else func]
 
-    if columns is not None: 
+    if columns is not None:
         columns = [tuple(c.split('.')) for c in columns]
         if not all(len(c) == 3 for c in columns):
             raise ValueError('Each column name should have three dot-separated parts')
         if not all(c in line_records.columns for c in columns):
-            options = ", ".join(".".join(c) for c in line_records.columns.tolist())
-            raise ValueError('The column names should be fields of torch.cuda.memory_stat(). Options are: ' + options)
+            options = ", ".join(".".join(c)
+                                for c in line_records.columns.tolist())
+            raise ValueError(
+                'The column names should be fields of torch.cuda.memory_stat(). Options are: ' + options)
         line_records = line_records.loc[:, columns]
-    
+
     return line_records
 
 
 class RecordsDisplay:
-    """IPython's rich display functionality [requires we return](https://ipython.readthedocs.io/en/stable/config/integrating.html)
-    an object that has a `_repr_html_` method for when HTML rendering is supported, and 
-    a `__repr__` method for when only text is available"""
+    """Interface for IPython's rich display
+
+    IPython's rich display functionality [requires we return](https://ipython.readthedocs.io/en/stable/config/integrating.html)
+    an object that has a `_repr_html_` method for when HTML rendering is supported, and
+    a `__repr__` method for when only text is available
+    """
 
     def __init__(self, line_records, code_infos):
         if len(line_records) > 0:
-            self._line_records = line_records.groupby(level=[0, 1]).max() 
+            self._line_records = line_records.groupby(level=[0, 1]).max()
         else:
             self._line_records = line_records
         self._code_infos = code_infos
@@ -100,12 +111,12 @@ class RecordsDisplay:
             if qual_name in self._line_records.index.get_level_values(0):
                 lines, start_line = inspect.getsourcelines(info['func'])
                 lines = pd.DataFrame.from_dict({
-                    'line': range(start_line, start_line + len(lines)), 
+                    'line': range(start_line, start_line + len(lines)),
                     'code': lines})
                 lines.columns = pd.MultiIndex.from_product([lines.columns, [''], ['']])
-                
+
                 merged[qual_name] = pd.merge(
-                    self._line_records.loc[qual_name], lines, 
+                    self._line_records.loc[qual_name], lines,
                     right_on='line', left_index=True, how='right')
         return merged
 
@@ -149,20 +160,20 @@ class RecordsDisplay:
 
             # Style the bar charts
             for i, c in enumerate(self._line_records.columns):
-                style = style.bar([c], color=COLORS[i % len(COLORS)], 
-                                width=99, vmin=0, vmax=maxes[c])
+                style = style.bar([c], color=COLORS[i % len(COLORS)],
+                                  width=99, vmin=0, vmax=maxes[c])
 
             # Style the text
             html[qual_name] = (style
                                 .format({c: readable_size for c in byte_cols})
                                 .set_properties(
                                     subset=['code'], **{
-                                        'text-align': 'left', 
-                                        'white-space': 'pre', 
+                                        'text-align': 'left',
+                                        'white-space': 'pre',
                                         'font-family': 'monospace'})
                                 .set_table_styles([{
-                                    'selector': 'th', 
-                                    'props': [('text-align', 'left')]}]) 
+                                    'selector': 'th',
+                                    'props': [('text-align', 'left')]}])
                                 .hide_index()
                                 .render())
 
@@ -206,20 +217,22 @@ class LineProfiler:
         """ Record line profiling information for the given Python function.
         """
         try:
-            # We need to use the hash here because pandas will later expect something 
+            # We need to use the hash here because pandas will later expect something
             # orderable for its index
             code_hash = hash(func.__code__)
         except AttributeError:
             import warnings
-            warnings.warn("Could not extract a code object for the object %r" % (func,))
+            warnings.warn(
+                "Could not extract a code object for the object %r" % (func,))
             return
         if code_hash not in self._code_infos:
             first_line = inspect.getsourcelines(func)[1]
             self._code_infos[code_hash] = {
-                'func': func, 
+                'func': func,
                 'first_line': first_line,
-                'prev_line': first_line, 
-                'prev_record': -1}
+                'prev_line': first_line,
+                'prev_record': -1,
+            }
 
         # re-register the newer trace_callback
         if self.enabled:
@@ -272,7 +285,7 @@ class LineProfiler:
             code_info = self._code_infos[code_hash]
             with torch.cuda.device(self.target_gpu):
                 self._raw_line_records.append({
-                    'code_hash': code_hash, 
+                    'code_hash': code_hash,
                     'line': code_info['prev_line'],
                     'prev_record_idx': code_info['prev_record'],
                     **torch.cuda.memory_stats()})
@@ -336,13 +349,15 @@ class LineProfiler:
         """
         stream.write(repr(self.display(func, columns)))
 
+
 global_line_profiler = LineProfiler()
 global_line_profiler.enable()
 
+
 def clear_global_line_profiler():
-    """Clears the state of the global line profiler
-    """
+    """Clears the state of the global line profiler"""
     global_line_profiler.clear()
+
 
 def set_target_gpu(gpu_id):
     """Set the target GPU id to profile memory
@@ -357,6 +372,7 @@ def set_target_gpu(gpu_id):
                   also accepts `torch.device` object.
     """
     global_line_profiler.target_gpu = gpu_id
+
 
 def profile(func, columns=DEFAULT_COLUMNS):
     """Profile the CUDA memory usage of target function line by line
@@ -402,13 +418,14 @@ def profile(func, columns=DEFAULT_COLUMNS):
 
     return func
 
+
 def profile_every(output_interval=1, enable=True, columns=DEFAULT_COLUMNS):
     """Profile the CUDA memory usage of target function line by line
 
     Prints the profiling output every `output_interval` execution of the target
     function
     The CUDA memory is collected only on the **current** cuda device.
-        
+
     The columns are explained in the PyTorch documentation:
     https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
 
@@ -437,4 +454,3 @@ def profile_every(output_interval=1, enable=True, columns=DEFAULT_COLUMNS):
 
         return run_func
     return inner_decorator
-
