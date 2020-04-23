@@ -170,8 +170,7 @@ class LineRecords:
         return '\n\n'.join(['## {q}\n\n{c}\n'.format(q=q, c=c) for q, c in string.items()])
 
     def _repr_html_(self):
-        """Renders the stats as HTML
-        """
+        """Renders the stats as HTML"""
         if len(self._line_records) == 0:
             return '<p>No data collected</p>'
 

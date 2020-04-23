@@ -1,1 +1,3 @@
-from .line_profiler import LineProfiler, profile, profile_every, set_target_gpu, clear_global_line_profiler
+from .line_profiler import LineProfiler
+from .profile import profile, profile_every, set_target_gpu, clear_global_line_profiler
+from .extension import load_ipython_extension
