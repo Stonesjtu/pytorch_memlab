@@ -257,8 +257,7 @@ class LineProfiler:
         sys.settrace(None)
 
     def clear(self):
-        """Clears the state of the line profiler
-        """
+        """Clear the state of the line profiler"""
         self._code_infos = {}
         self._raw_line_records = []
 
@@ -289,11 +288,17 @@ class LineProfiler:
                 assert False
 
     def line_records(self, func=None, columns=DEFAULT_COLUMNS):
-        """Returns a (line, statistic)-indexed dataframe of memory stats.
-        
+        """Get the line records
+
         The columns are explained in the PyTorch documentation:
-        
         https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
+
+        Args:
+            func (str): the function name of interest, None for all registered function
+            columns (list of str): the column names of interest, See PyTorch's doc for available names.
+
+        Returns:
+            pd.DataFrame: a (line, statistic)-indexed dataframe of memory stats.
         """
         if len(self._raw_line_records) == 0:
             return pd.DataFrame(index=pd.MultiIndex.from_product([[], []]), columns=columns)
@@ -302,17 +307,33 @@ class LineProfiler:
         return _extract_line_records(line_records, func, columns)
 
     def display(self, func=None, columns=DEFAULT_COLUMNS):
-        """Returns an object that'll display the recorded stats in the IPython console.
+        """Display the profiling results on either IPython or CLI
 
         The columns are explained in the PyTorch documentation:
-        
         https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
-        
-        To work, this needs to be the last thing returned in the IPython statement or cell.
-        """ 
+
+        .. note:: To work, this needs to be the last thing returned in the IPython statement or cell.
+
+        Args:
+            func (str): the function name of interest, None for all registered function
+            columns (list of str): the column names of interest, See PyTorch's doc for available names.
+
+        Returns:
+            RecordsDisplay: Returns an object that'll display the recorded stats in the IPython console
+        """
         return RecordsDisplay(self.line_records(func, columns), self._code_infos)
 
     def print_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=sys.stdout):
+        """Print the text profiling results to stream
+
+        The columns are explained in the PyTorch documentation:
+        https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
+
+        Args:
+            func (str): the function name of interest, None for all registered function
+            columns (list of str): the column names of interest, See PyTorch's doc for available names
+            stream (IO-like object): the stream to write to
+        """
         stream.write(repr(self.display(func, columns)))
 
 global_line_profiler = LineProfiler()
@@ -333,7 +354,7 @@ def set_target_gpu(gpu_id):
 
     Args:
         - gpu_id: cuda index to profile the memory on,
-        also accepts `torch.device` object.
+                  also accepts `torch.device` object.
     """
     global_line_profiler.target_gpu = gpu_id
 
@@ -342,10 +363,13 @@ def profile(func, columns=DEFAULT_COLUMNS):
 
     The profiling results will be printed at exiting, KeyboardInterrupt raised.
     The CUDA memory is collected only on the **current** cuda device.
-        
+
     The columns are explained in the PyTorch documentation:
-    
     https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
+
+    Args:
+        func: the function or method to profile on
+        columns (list of str): the column names of interest, See PyTorch's doc for available names.
 
     Usage:
         ```python
@@ -386,14 +410,13 @@ def profile_every(output_interval=1, enable=True, columns=DEFAULT_COLUMNS):
     The CUDA memory is collected only on the **current** cuda device.
         
     The columns are explained in the PyTorch documentation:
-    
     https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
 
     Args:
-        - func: the function or method to profile on
-        - enable: whether to enable the profiling mode, so users don't have to
-        modify any source code for enabling and disabling profiling.
-        - output interval: frequency of output the profiling results
+        enable (bool): whether to enable the profiling mode, so users don't have to
+                       modify any source code for enabling and disabling profiling.
+        output_interval (int): frequency of output the profiling results
+        columns (list of str): the column names of interest, See PyTorch's doc for available names.
     """
 
     def inner_decorator(func):
