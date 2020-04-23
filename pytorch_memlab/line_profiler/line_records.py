@@ -149,7 +149,7 @@ class LineRecords:
     def __repr__(self):
         """Renders the stats as text"""
         if len(self._line_records) == 0:
-            return 'No data collected'
+            return 'No data collected\n'
 
         is_byte_col = self._line_records.columns.get_level_values(0).str.contains('byte')
         byte_cols = self._line_records.columns[is_byte_col]
