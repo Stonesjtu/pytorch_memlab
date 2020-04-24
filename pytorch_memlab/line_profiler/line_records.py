@@ -96,6 +96,20 @@ class LineRecords:
         self._code_infos = code_infos
 
     def display(self, func, columns):
+        """Display the records to either notebook or CLI
+
+        The columns are explained in the PyTorch documentation:
+        https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
+
+        .. note:: Make this call the last one in a notebook cell
+
+        Args:
+            func (str): the function name of interest, None for all registered function
+            columns (list of str): the column names of interest, See PyTorch's doc for available names.
+
+        Returns:
+            RecordsDisplay: a IPython friendly object which converts records to HTML or plain text
+        """
         line_records = self._filter_raw_line_records(func, columns)
         return RecordsDisplay(line_records, self._code_infos)
 
