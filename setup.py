@@ -27,6 +27,7 @@ setup(
         'setuptools',
         'calmsize',
         'pandas>=0.18',
+        'torch>=1.4',
     ],
     extras_require={
         'ipython': ['IPython>=0.13'],
