@@ -120,8 +120,6 @@ class LineRecords:
 
         if len(line_records) > 0:
             line_records = line_records.groupby(level=[0, 1]).max()
-        else:
-            line_records = line_records
 
         return line_records
 
