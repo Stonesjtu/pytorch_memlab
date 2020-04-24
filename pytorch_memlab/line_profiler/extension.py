@@ -1,4 +1,6 @@
+"""IPython & notebook extension interface"""
 from tempfile import mkstemp
+
 from IPython.core.magic import (
     Magics,
     magics_class,
@@ -6,6 +8,7 @@ from IPython.core.magic import (
     needs_local_scope,
 )
 from IPython.core.magic_arguments import magic_arguments, argument, parse_argstring
+
 from .line_profiler import LineProfiler, DEFAULT_COLUMNS
 
 
@@ -29,7 +32,7 @@ class MemlabMagics(Magics):
               action='append',
               default=[],
               help="""Columns to display. Can be specified multiple times to profile multiple
-                   functions. See the Torch CUDA spec at 
+                   functions. See the Torch CUDA spec at
                    https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats for details.""")
     @argument('-D',
               '--no_default_columns',

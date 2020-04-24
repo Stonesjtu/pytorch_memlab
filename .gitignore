@@ -114,3 +114,7 @@ crashlytics.properties
 crashlytics-build.properties
 
 .ropeproject
+
+#####=== VSCode ===#####
+
+.vscode
