@@ -7,7 +7,7 @@ except FileNotFoundError:
 
 setup(
     name='pytorch_memlab',
-    version='0.1.0',
+    version='0.2.0',
     licence='MIT',
     description='A lab to do simple and accurate memory experiments on pytorch',
     long_description=long_description,
