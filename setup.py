@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 try:
     long_description = open('README.md').read()
@@ -33,5 +33,5 @@ setup(
         'ipython': ['IPython>=0.13'],
         'test': ['pytest'],
     },
-    packages=['pytorch_memlab'],
+    packages=find_packages(),
 )
