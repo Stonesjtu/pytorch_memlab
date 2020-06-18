@@ -2,6 +2,7 @@ pytorch_memlab
 ======
 [![Build Status](https://travis-ci.com/Stonesjtu/pytorch_memlab.svg?token=vyTdxHbi1PCRzV6disHp&branch=master)](https://travis-ci.com/Stonesjtu/pytorch_memlab)
 ![PyPI](https://img.shields.io/pypi/v/pytorch_memlab.svg)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/Stonesjtu/pytorch_memlab.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/Stonesjtu/pytorch_memlab/context:python)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/pytorch_memlab.svg)
 
 A simple and accurate **CUDA** memory management laboratory for pytorch,
@@ -446,6 +447,10 @@ open source community.
 
 ## CHANGES
 
+##### 0.2.1 (2020-06-18)
+  - Fix `line_profiler` not found
+##### 0.2.0 (2020-06-15)
+  - Add jupyter notebook figure and ipython support
 ##### 0.1.0 (2020-04-17)
   - Add ipython magic support (#8)
 ##### 0.0.4 (2019-10-08)
