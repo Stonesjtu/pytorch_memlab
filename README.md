@@ -446,6 +446,10 @@ open source community.
 
 ## CHANGES
 
+##### 0.2.1 (2020-06-18)
+  - Fix `line_profiler` not found
+##### 0.2.0 (2020-06-15)
+  - Add jupyter notebook figure and ipython support
 ##### 0.1.0 (2020-04-17)
   - Add ipython magic support (#8)
 ##### 0.0.4 (2019-10-08)
