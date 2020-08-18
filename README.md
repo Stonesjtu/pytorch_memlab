@@ -8,12 +8,25 @@ pytorch_memlab
 A simple and accurate **CUDA** memory management laboratory for pytorch,
 it consists of different parts about the memory:
 
-  - [A `line_profiler` style CUDA memory profiler with simple API.](#memory-profiler)
-  - [A reporter to inspect tensors occupying the CUDA memory.](#memory-reporter)
-  - [An interesting feature to temporarily move all the CUDA tensors into
-    CPU memory for courtesy, and of course the backward transferring.](#courtesy)
-  - [IPython support through `%mlrun`/`%%mlrun` line/cell magic
-    commands.](#ipython-support)
+- Features:
+
+  - Memory Profiler: A `line_profiler` style CUDA memory profiler with simple API.
+  - Memory Reporter: A reporter to inspect tensors occupying the CUDA memory.
+  - Courtesy: An interesting feature to temporarily move all the CUDA tensors into
+    CPU memory for courtesy, and of course the backward transferring.
+  - IPython support through `%mlrun`/`%%mlrun` line/cell magic
+    commands.
+
+
+- Table of Contents
+  * [Installation](#installation)
+  * [User-Doc](#user-doc)
+    + [Memory Profiler](#memory-profiler)
+    + [IPython support](#ipython-support)
+    + [Memory Reporter](#memory-reporter)
+    + [Courtesy](#courtesy)
+    + [ACK](#ack)
+  * [CHANGES](#changes)
 
 Installation
 -----
