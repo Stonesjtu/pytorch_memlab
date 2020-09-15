@@ -1,6 +1,4 @@
 """IPython & notebook extension interface"""
-from tempfile import mkstemp
-
 from IPython.core.magic import (
     Magics,
     magics_class,
