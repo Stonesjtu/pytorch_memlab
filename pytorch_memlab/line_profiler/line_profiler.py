@@ -4,7 +4,6 @@ import sys
 import torch
 
 from .line_records import LineRecords
-from ..utils import readable_size
 
 # Seaborn's `muted` color cycle
 DEFAULT_COLUMNS = ['active_bytes.all.peak', 'reserved_bytes.all.peak']
