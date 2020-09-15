@@ -31,7 +31,6 @@ class MemReporter():
             assert isinstance(model, torch.nn.Module)
             # for model with tying weight, multiple parameters may share
             # the same underlying tensor
-            
             tensor_names = defaultdict(list)
             for name, param in model.named_parameters():
                 tensor_names[param].append(name)
