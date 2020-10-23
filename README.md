@@ -460,6 +460,8 @@ open source community.
 
 ## CHANGES
 
+##### 0.2.2 (2020-10-23)
+  - Fix memory leak in `MemReporter`
 ##### 0.2.1 (2020-06-18)
   - Fix `line_profiler` not found
 ##### 0.2.0 (2020-06-15)
