@@ -123,7 +123,7 @@ class MemReporter():
                 if isinstance(tensor, torch.nn.Parameter):
                     if tensor.grad is not None:
                         # manually specify the name of gradient tensor
-                        self.tensor_name[tensor.grad] = '{}.grad'.format(
+                        self.tensor_name[id(tensor.grad)] = '{}.grad'.format(
                             self._get_tensor_name(tensor)
                         )
                         stat = get_tensor_stat(tensor.grad)
