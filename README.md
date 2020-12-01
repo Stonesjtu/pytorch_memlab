@@ -75,7 +75,7 @@ def outer():
     linear = torch.nn.Linear(100, 100).cuda()
     linear2 = torch.nn.Linear(100, 100).cuda()
     inner()
-    
+
 with LineProfiler(outer, inner) as prof:
     outer()
 prof.display()
@@ -91,22 +91,22 @@ or the following info if you're in a text-only terminal:
 ```
 ## outer
 
-active_bytes reserved_bytes line  code                                           
-         all            all                                                      
-        peak           peak                                                      
-       0.00B          0.00B    7  def outer():                                   
-      40.00K          2.00M    8      linear = torch.nn.Linear(100, 100).cuda()  
-      80.00K          2.00M    9      linear2 = torch.nn.Linear(100, 100).cuda() 
-     120.00K          2.00M   10      inner()                                    
+active_bytes reserved_bytes line  code
+         all            all
+        peak           peak
+       0.00B          0.00B    7  def outer():
+      40.00K          2.00M    8      linear = torch.nn.Linear(100, 100).cuda()
+      80.00K          2.00M    9      linear2 = torch.nn.Linear(100, 100).cuda()
+     120.00K          2.00M   10      inner()
 
 
 ## inner
 
-active_bytes reserved_bytes line  code                                 
-         all            all                                            
-        peak           peak                                            
-      80.00K          2.00M    4  def inner():                         
-     120.00K          2.00M    5      torch.nn.Linear(100, 100).cuda()  
+active_bytes reserved_bytes line  code
+         all            all
+        peak           peak
+      80.00K          2.00M    4  def inner():
+     120.00K          2.00M    5      torch.nn.Linear(100, 100).cuda()
 ```
 
 An explanation of what each column means can be found in the [Torch documentation](https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats). The name of any field from `memory_stats()`
@@ -116,7 +116,7 @@ If you use `profile` decorator, the memory statistics are collected during
 multiple runs and only the maximum one is displayed at the end.
 We also provide a more flexible API called `profile_every` which prints the
 memory info every *N* times of function execution. You can simply replace
-`@profile` with `@profile_every(1)` to print the memory usage for each 
+`@profile` with `@profile_every(1)` to print the memory usage for each
 execution.
 
 The `@profile` and `@profile_every` can also be mixed to gain more control
@@ -148,7 +148,7 @@ def func():
     net2 = torch.nn.Linear(1024, 1024).cuda(1)
     set_target_gpu(0)
     net3 = torch.nn.Linear(1024, 1024).cuda(0)
-    
+
 func()
 ```
 
@@ -387,7 +387,7 @@ NOTICE:
 
 - A failed example due to pytorch's C side tensor buffers
 
-In the following example, a temp buffer is created at `inp * (inp + 2)` to 
+In the following example, a temp buffer is created at `inp * (inp + 2)` to
 store both `inp` and `inp + 2`, unfortunately python only knows the existence
 of inp, so we have *2M* memory lost, which is the same size of Tensor `inp`.
 
@@ -426,7 +426,7 @@ Sometimes people would like to preempt your running task, but you don't want
 to save checkpoint and then load, actually all they need is GPU resources (
 typically CPU resources and CPU memory is always spare in GPU clusters), so
 you can move all your workspaces from GPU to CPU and then halt your task until
-a restart signal is triggered, instead of saving&loading checkpoints and 
+a restart signal is triggered, instead of saving&loading checkpoints and
 bootstrapping from scratch.
 
 Still developing..... But you can have fun with:
@@ -460,6 +460,9 @@ open source community.
 
 ## CHANGES
 
+##### 0.2.3 (2020-12-01)
+  - Fix name mapping in `MemReporter` (#24)
+  - Fix reporter without model input (#22 #25)
 ##### 0.2.2 (2020-10-23)
   - Fix memory leak in `MemReporter`
 ##### 0.2.1 (2020-06-18)
