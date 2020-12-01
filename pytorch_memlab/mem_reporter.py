@@ -27,13 +27,15 @@ class MemReporter():
         self.device_tensor_stat = {}
         # to numbering the unknown tensors
         self.name_idx = 0
+
+        tensor_names = defaultdict(list)
         if model is not None:
             assert isinstance(model, torch.nn.Module)
             # for model with tying weight, multiple parameters may share
             # the same underlying tensor
-            tensor_names = defaultdict(list)
             for name, param in model.named_parameters():
                 tensor_names[param].append(name)
+
         for param, name in tensor_names.items():
             self.tensor_name[id(param)] = '+'.join(name)
 
