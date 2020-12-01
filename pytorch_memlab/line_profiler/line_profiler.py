@@ -6,7 +6,7 @@ import torch
 from .line_records import LineRecords
 
 # Seaborn's `muted` color cycle
-DEFAULT_COLUMNS = ['active_bytes.all.peak', 'reserved_bytes.all.peak']
+DEFAULT_COLUMNS = ('active_bytes.all.peak', 'reserved_bytes.all.peak')
 
 
 class LineProfiler:
@@ -88,8 +88,9 @@ class LineProfiler:
         try:
             torch.cuda.empty_cache()
             self._reset_cuda_stats()
-        except AssertionError as e:
-            print('Could not reset CUDA stats and cache: ' + str(e))
+        # Pytorch-1.7.0 raises AttributeError while <1.6.0 raises AssertionError
+        except (AssertionError, AttributeError) as error:
+            print('Could not reset CUDA stats and cache: ' + str(error))
 
         self.register_callback()
 
