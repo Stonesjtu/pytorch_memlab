@@ -10,15 +10,16 @@ matrix:
     env:
       IPYTHON_VERSION='7'
       PANDAS_VERSION='1'
-  - python: '3.7'
+  - python: '3.7.3'
     env:
       IPYTHON_VERSION='7'
       PANDAS_VERSION='1'
 install:
 - pip install IPython==$IPYTHON_VERSION
 - pip install pandas==$PANDAS_VERSION
-- python setup.py install
-- pip install -r requirements.txt
+- pip install .
+# - python setup.py install
+# - pip install -r requirements.txt
 script:
 - python -c 'import pytorch_memlab'
 deploy:
