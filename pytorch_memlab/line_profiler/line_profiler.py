@@ -88,8 +88,9 @@ class LineProfiler:
         try:
             torch.cuda.empty_cache()
             self._reset_cuda_stats()
-        # Pytorch-1.7.0 raises AttributeError while <1.6.0 raises AssertionError
-        except (AssertionError, AttributeError) as error:
+        # What error is raised depends on PyTorch version:
+        # latest raises RuntimeError, 1.7.0 raises AttributeError, <1.7.0 raises AssertionError
+        except (AssertionError, AttributeError, RuntimeError) as error:
             print('Could not reset CUDA stats and cache: ' + str(error))
 
         self.register_callback()
