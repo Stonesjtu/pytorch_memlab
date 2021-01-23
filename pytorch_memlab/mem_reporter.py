@@ -1,7 +1,7 @@
 import math
 import gc
 from collections import defaultdict
-from typing import Tuple, List
+from typing import Optional, Tuple, List
 
 import torch
 from .utils import readable_size
@@ -22,7 +22,7 @@ class MemReporter():
         of Tensors
 
     """
-    def __init__(self, model=None):
+    def __init__(self, model: Optional[torch.nn.Module] = None):
         self.tensor_name = {}
         self.device_mapping = defaultdict(list)
         self.device_tensor_stat = {}
@@ -40,7 +40,7 @@ class MemReporter():
         for param, name in tensor_names.items():
             self.tensor_name[id(param)] = '+'.join(name)
 
-    def _get_tensor_name(self, tensor):
+    def _get_tensor_name(self, tensor: torch.Tensor) -> str:
         tensor_id = id(tensor)
         if tensor_id in self.tensor_name:
             name = self.tensor_name[tensor_id]
@@ -140,7 +140,7 @@ class MemReporter():
 
         self.device_mapping.clear()
 
-    def print_stats(self, verbose=False, target_device=None):
+    def print_stats(self, verbose: bool = False, target_device: Optional[torch.device] = None) -> None:
         # header
         show_reuse = verbose
         template_format = '{:<40s}{:>20s}{:>10s}'
@@ -182,7 +182,7 @@ class MemReporter():
                           ' invisible gradient buffer tensors')
             print('-'*LEN)
 
-    def report(self, verbose=False, device=None):
+    def report(self, verbose: bool = False, device: Optional[torch.device] = None) -> None:
         """Interface for end-users to directly print the memory usage
 
         args:

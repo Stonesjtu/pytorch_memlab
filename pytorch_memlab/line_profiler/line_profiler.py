@@ -1,5 +1,8 @@
 import inspect
 import sys
+from types import FrameType
+import warnings
+from typing import Any, Callable, Optional, Tuple
 
 import torch
 
@@ -33,7 +36,7 @@ class LineProfiler:
         ```
     """
 
-    def __init__(self, *functions, target_gpu=0, **kwargs):
+    def __init__(self, *functions: Callable, target_gpu: int = 0):
         self.target_gpu = target_gpu
         self._code_infos = {}
         self._raw_line_records = []
@@ -41,7 +44,7 @@ class LineProfiler:
         for func in functions:
             self.add_function(func)
 
-    def add_function(self, func):
+    def add_function(self, func: Callable) -> None:
         """ Record line profiling information for the given Python function.
         """
         try:
@@ -49,7 +52,6 @@ class LineProfiler:
             # orderable for its index
             code_hash = hash(func.__code__)
         except AttributeError:
-            import warnings
             warnings.warn(
                 "Could not extract a code object for the object %r" % (func,))
             return
@@ -104,7 +106,7 @@ class LineProfiler:
         self._code_infos = {}
         self._raw_line_records = []
 
-    def _trace_callback(self, frame, event, arg):
+    def _trace_callback(self, frame: FrameType, event: str, _unused_arg: Tuple[Any, ...]):
         """Trace the execution of python line-by-line"""
 
         if event == 'call':
@@ -128,7 +130,7 @@ class LineProfiler:
                 code_info['prev_line'] = code_info['first_line']
                 code_info['prev_record'] = -1
 
-    def display(self, func=None, columns=DEFAULT_COLUMNS):
+    def display(self, func: Optional[Callable] = None, columns: Tuple[str, ...] = DEFAULT_COLUMNS) -> LineRecords:
         """Display the profiling results on either IPython or CLI
 
         The columns are explained in the PyTorch documentation:
@@ -145,7 +147,7 @@ class LineProfiler:
         """
         return LineRecords(self._raw_line_records, self._code_infos).display(func, columns)
 
-    def print_stats(self, func=None, columns=DEFAULT_COLUMNS, stream=sys.stdout):
+    def print_stats(self, func: Optional[Callable] = None, columns: Tuple[str, ...] = DEFAULT_COLUMNS, stream=sys.stdout):
         """Print the text profiling results to stream
 
         The columns are explained in the PyTorch documentation:
