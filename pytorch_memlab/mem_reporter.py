@@ -1,6 +1,7 @@
 import math
 import gc
 from collections import defaultdict
+from typing import Tuple, List
 
 import torch
 from .utils import readable_size
@@ -74,7 +75,7 @@ class MemReporter():
         visited_data = {}
         self.device_tensor_stat.clear()
 
-        def get_tensor_stat(tensor):
+        def get_tensor_stat(tensor: torch.Tensor) -> List[Tuple[str, int, int, int]]:
             """Get the stat of a single tensor
 
             Returns:
@@ -84,6 +85,10 @@ class MemReporter():
             assert isinstance(tensor, torch.Tensor)
 
             name = self._get_tensor_name(tensor)
+            if tensor.is_sparse:
+                indices_stat = get_tensor_stat(tensor._indices())
+                values_stat = get_tensor_stat(tensor._values())
+                return indices_stat + values_stat
 
             numel = tensor.numel()
             element_size = tensor.element_size()
@@ -112,7 +117,7 @@ class MemReporter():
             if not size:
                 size = (1,)
 
-            return (name, size, numel, memory_size)
+            return [(name, size, numel, memory_size)]
 
         for device, tensors in self.device_mapping.items():
             tensor_stats = []
@@ -121,7 +126,7 @@ class MemReporter():
                 if tensor.numel() == 0:
                     continue
                 stat = get_tensor_stat(tensor)  # (name, shape, numel, memory_size)
-                tensor_stats.append(stat)
+                tensor_stats += stat
                 if isinstance(tensor, torch.nn.Parameter):
                     if tensor.grad is not None:
                         # manually specify the name of gradient tensor
@@ -129,7 +134,7 @@ class MemReporter():
                             self._get_tensor_name(tensor)
                         )
                         stat = get_tensor_stat(tensor.grad)
-                        tensor_stats.append(stat)
+                        tensor_stats += stat
 
             self.device_tensor_stat[device] = tensor_stats
 
