@@ -1,4 +1,5 @@
 from functools import wraps
+from typing import Callable, Tuple
 from .line_profiler import LineProfiler, DEFAULT_COLUMNS
 
 
@@ -11,7 +12,7 @@ def clear_global_line_profiler():
     global_line_profiler.clear()
 
 
-def set_target_gpu(gpu_id):
+def set_target_gpu(gpu_id: int):
     """Set the target GPU id to profile memory
 
     Because of the lack of output space, only one GPU's memory usage is shown
@@ -26,7 +27,7 @@ def set_target_gpu(gpu_id):
     global_line_profiler.target_gpu = gpu_id
 
 
-def profile(func, columns=DEFAULT_COLUMNS):
+def profile(func, columns: Tuple[str, ...] = DEFAULT_COLUMNS):
     """Profile the CUDA memory usage of target function line by line
 
     The profiling results will be printed at exiting, KeyboardInterrupt raised.
@@ -71,7 +72,7 @@ def profile(func, columns=DEFAULT_COLUMNS):
     return func
 
 
-def profile_every(output_interval=1, enable=True, columns=DEFAULT_COLUMNS):
+def profile_every(output_interval: int = 1, enable: bool = True, columns: Tuple[str, ...] = DEFAULT_COLUMNS):
     """Profile the CUDA memory usage of target function line by line
 
     Prints the profiling output every `output_interval` execution of the target
@@ -88,7 +89,7 @@ def profile_every(output_interval=1, enable=True, columns=DEFAULT_COLUMNS):
         columns (list of str): the column names of interest, See PyTorch's doc for available names.
     """
 
-    def inner_decorator(func):
+    def inner_decorator(func: Callable):
         func.cur_idx = 1
 
         if enable:

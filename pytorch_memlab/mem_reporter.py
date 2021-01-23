@@ -1,6 +1,7 @@
 import math
 import gc
 from collections import defaultdict
+from typing import Optional, Tuple, List
 
 import torch
 from .utils import readable_size
@@ -21,7 +22,7 @@ class MemReporter():
         of Tensors
 
     """
-    def __init__(self, model=None):
+    def __init__(self, model: Optional[torch.nn.Module] = None):
         self.tensor_name = {}
         self.device_mapping = defaultdict(list)
         self.device_tensor_stat = {}
@@ -39,7 +40,7 @@ class MemReporter():
         for param, name in tensor_names.items():
             self.tensor_name[id(param)] = '+'.join(name)
 
-    def _get_tensor_name(self, tensor):
+    def _get_tensor_name(self, tensor: torch.Tensor) -> str:
         tensor_id = id(tensor)
         if tensor_id in self.tensor_name:
             name = self.tensor_name[tensor_id]
@@ -74,7 +75,7 @@ class MemReporter():
         visited_data = {}
         self.device_tensor_stat.clear()
 
-        def get_tensor_stat(tensor):
+        def get_tensor_stat(tensor: torch.Tensor) -> List[Tuple[str, int, int, int]]:
             """Get the stat of a single tensor
 
             Returns:
@@ -84,6 +85,10 @@ class MemReporter():
             assert isinstance(tensor, torch.Tensor)
 
             name = self._get_tensor_name(tensor)
+            if tensor.is_sparse:
+                indices_stat = get_tensor_stat(tensor._indices())
+                values_stat = get_tensor_stat(tensor._values())
+                return indices_stat + values_stat
 
             numel = tensor.numel()
             element_size = tensor.element_size()
@@ -112,7 +117,7 @@ class MemReporter():
             if not size:
                 size = (1,)
 
-            return (name, size, numel, memory_size)
+            return [(name, size, numel, memory_size)]
 
         for device, tensors in self.device_mapping.items():
             tensor_stats = []
@@ -121,7 +126,7 @@ class MemReporter():
                 if tensor.numel() == 0:
                     continue
                 stat = get_tensor_stat(tensor)  # (name, shape, numel, memory_size)
-                tensor_stats.append(stat)
+                tensor_stats += stat
                 if isinstance(tensor, torch.nn.Parameter):
                     if tensor.grad is not None:
                         # manually specify the name of gradient tensor
@@ -129,13 +134,13 @@ class MemReporter():
                             self._get_tensor_name(tensor)
                         )
                         stat = get_tensor_stat(tensor.grad)
-                        tensor_stats.append(stat)
+                        tensor_stats += stat
 
             self.device_tensor_stat[device] = tensor_stats
 
         self.device_mapping.clear()
 
-    def print_stats(self, verbose=False, target_device=None):
+    def print_stats(self, verbose: bool = False, target_device: Optional[torch.device] = None) -> None:
         # header
         show_reuse = verbose
         template_format = '{:<40s}{:>20s}{:>10s}'
@@ -177,7 +182,7 @@ class MemReporter():
                           ' invisible gradient buffer tensors')
             print('-'*LEN)
 
-    def report(self, verbose=False, device=None):
+    def report(self, verbose: bool = False, device: Optional[torch.device] = None) -> None:
         """Interface for end-users to directly print the memory usage
 
         args:

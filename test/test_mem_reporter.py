@@ -28,6 +28,18 @@ def test_reporter_without_model():
 
     reporter.report()
 
+def test_reporter_sparse_tensor():
+    emb = torch.nn.Embedding(1024, 1024, sparse=True)
+    inp = torch.arange(0, 128)
+    reporter = MemReporter()
+
+    out = emb(inp).mean()
+    reporter.report()
+    out.backward()
+    b = emb.weight.grad * 2
+
+    reporter.report()
+
 @pytest.mark.skipif(concentrate_mode, reason='concentrate')
 def test_reporter_tie_weight():
     linear = torch.nn.Linear(1024, 1024)

@@ -1,5 +1,6 @@
 """Class and helper functions for processing and displaying line records"""
 import inspect
+from typing import Callable, Optional, Tuple, List, Dict, Any
 import pandas as pd
 
 from ..utils import readable_size
@@ -11,7 +12,8 @@ COLORS = [
 ]
 
 
-def _accumulate_line_records(raw_line_records):
+
+def _accumulate_line_records(raw_line_records: List[Dict[str, Any]]) -> pd.DataFrame:
     """The raw records give the memory stats between successive lines executed by the profiler.
     But we want the memory stats between successive lines in our functions! The two diverge when
     a function we're profiling calls another function we're profiling, since then Torch will have
@@ -48,7 +50,7 @@ def _accumulate_line_records(raw_line_records):
     return refined
 
 
-def _line_records(raw_line_records, code_infos):
+def _line_records(raw_line_records: List[Dict[str, Any]], code_infos: List[Dict[str, Any]]) -> pd.DataFrame:
     """Converts the raw line records to a nicely-shaped dataframe whose values reflect
     the memory usage of lines of _functions_ rather than lines of _execution_. See the
     `_accumulate_line_records` docstring for more detail."""
@@ -65,37 +67,16 @@ def _line_records(raw_line_records, code_infos):
     return records
 
 
-def _extract_line_records(line_records, func=None, columns=None):
-    """Extracts the subset of a line_records dataframe pertinent to a given set of functions and
-    columns"""
-    if func is not None:
-        # Support both passing the function directly and passing a qual name/list of qual names
-        line_records = line_records.loc[[func.__qualname__] if callable(func) else func]
-
-    if columns is not None:
-        columns = [tuple(c.split('.')) for c in columns]
-        if not all(len(c) == 3 for c in columns):
-            raise ValueError('Each column name should have three dot-separated parts')
-        if not all(c in line_records.columns for c in columns):
-            options = ", ".join(".".join(c)
-                                for c in line_records.columns.tolist())
-            raise ValueError(
-                'The column names should be fields of torch.cuda.memory_stat(). Options are: ' + options)
-        line_records = line_records.loc[:, columns]
-
-    return line_records
-
-
 class LineRecords:
     """Class for processing raw line records and display on IPython & CLI
     """
 
-    def __init__(self, raw_line_records, code_infos):
+    def __init__(self, raw_line_records: List[Dict[str, Any]], code_infos: List[Dict[str, Any]]):
         super().__init__()
         self._raw_line_records = raw_line_records
         self._code_infos = code_infos
 
-    def display(self, func, columns):
+    def display(self, func: Callable[..., Any], columns: Tuple[str, ...]):
         """Display the records to either notebook or CLI
 
         The columns are explained in the PyTorch documentation:
@@ -113,7 +94,7 @@ class LineRecords:
         line_records = self._filter_raw_line_records(func, columns)
         return RecordsDisplay(line_records, self._code_infos)
 
-    def _filter_raw_line_records(self, func, columns):
+    def _filter_raw_line_records(self, func: Callable[..., Any], columns: Tuple[str, ...]) -> pd.DataFrame:
         """Get the line records
 
         The columns are explained in the PyTorch documentation:
@@ -138,6 +119,27 @@ class LineRecords:
         return line_records
 
 
+def _extract_line_records(line_records: LineRecords, func: Optional[Callable] = None, columns: Tuple[str, ...] = None):
+    """Extracts the subset of a line_records dataframe pertinent to a given set of functions and
+    columns"""
+    if func is not None:
+        # Support both passing the function directly and passing a qual name/list of qual names
+        line_records = line_records.loc[[func.__qualname__] if callable(func) else func]
+
+    if columns is not None:
+        columns = [tuple(c.split('.')) for c in columns]
+        if not all(len(c) == 3 for c in columns):
+            raise ValueError('Each column name should have three dot-separated parts')
+        if not all(c in line_records.columns for c in columns):
+            options = ", ".join(".".join(c)
+                                for c in line_records.columns.tolist())
+            raise ValueError(
+                'The column names should be fields of torch.cuda.memory_stat(). Options are: ' + options)
+        line_records = line_records.loc[:, columns]
+
+    return line_records
+
+
 class RecordsDisplay:
     """Class for processing raw line records and display on IPython & CLI
 
@@ -145,13 +147,13 @@ class RecordsDisplay:
     an object that has a `_repr_html_` method for when HTML rendering is supported, and
     a `__repr__` method for when only text is available
     """
-    def __init__(self, line_records, code_infos):
+    def __init__(self, line_records: LineRecords, code_infos: List[Dict[str, Any]]):
         super().__init__()
         self._line_records = line_records
         self._code_infos = code_infos
         self._merged_line_records = self._merge_line_records_with_code()
 
-    def _merge_line_records_with_code(self):
+    def _merge_line_records_with_code(self) -> Dict[str, Any]:
         merged_records = {}
         for _, info in self._code_infos.items():
             qual_name = info['func'].__qualname__
