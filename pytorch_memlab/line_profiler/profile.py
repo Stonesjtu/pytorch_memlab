@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Callable, Optional, Tuple
+from typing import Callable, Tuple
 from .line_profiler import LineProfiler, DEFAULT_COLUMNS
 
 
