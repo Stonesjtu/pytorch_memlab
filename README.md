@@ -163,7 +163,7 @@ Make sure you have `IPython` installed, or have installed `pytorch-memlab` with
 First, load the extension:
 
 ```python
-%%load_ext pytorch_memlab
+%load_ext pytorch_memlab
 ```
 
 This makes the `%mlrun` and `%%mlrun` line/cell magics available for use. For
