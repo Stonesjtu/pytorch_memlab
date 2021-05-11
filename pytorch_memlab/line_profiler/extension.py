@@ -92,7 +92,7 @@ class MemlabMagics(Magics):
         if args.return_profiler:
             return profiler
         else:
-            defaults = [] if args.no_default_columns else DEFAULT_COLUMNS
+            defaults = [] if args.no_default_columns else list(DEFAULT_COLUMNS)
             return profiler.display(columns=defaults + args.column)
 
 
