@@ -30,9 +30,9 @@ jobs:
         pip install ipython pandas
         pip install .[test]
     - name: Build package
-      run: python -m build
+      run: python setup.py bdist
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@v1.4.2
       with:
-        user: yoursky
+        user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
