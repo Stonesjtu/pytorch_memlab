@@ -460,6 +460,11 @@ open source community.
 
 ## CHANGES
 
+
+##### 0.2.4 (2021-10-28)
+  - Fix colab error (#35)
+  - Support python3.8 (#38)
+  - Support sparse tensor (#30)
 ##### 0.2.3 (2020-12-01)
   - Fix name mapping in `MemReporter` (#24)
   - Fix reporter without model input (#22 #25)
