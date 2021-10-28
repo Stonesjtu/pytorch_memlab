@@ -12,6 +12,7 @@ on:
   release:
     types: [published]
 
+
 jobs:
   deploy:
 
@@ -28,10 +29,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install ipython pandas
         pip install .[test]
-    - name: Test
-      run: |
-        python -c 'import pytorch_memlab'
-        pytest test/test_mem_reporter.py
     - name: Build package
       run: python -m build
     - name: Publish package
