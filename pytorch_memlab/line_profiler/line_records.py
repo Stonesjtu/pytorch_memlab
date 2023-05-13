@@ -60,7 +60,7 @@ def _line_records(raw_line_records: List[Dict[str, Any]], code_infos: List[Dict[
     records = (_accumulate_line_records(raw_line_records)
                .assign(qual_name=lambda df: df.code_hash.map(qual_names))
                .set_index(['qual_name', 'line'])
-               .drop(['code_hash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], 1))
+               .drop(['code_hash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], axis=1))
     records.columns = pd.MultiIndex.from_tuples(
         [c.split('.') for c in records.columns])
 
@@ -186,7 +186,7 @@ class RecordsDisplay:
             # This is a mess, but I can't find any other way to left-align text strings.
             code_header = (left_align.format('code'), '', '')
             merged[code_header] = merged['code'].apply(lambda l: left_align.format(l.rstrip('\n\r')))
-            merged = merged.drop('code', 1, level=0)
+            merged = merged.drop('code', axis=1, level=0)
 
             string[qual_name] = merged.to_string(index=False)
 
