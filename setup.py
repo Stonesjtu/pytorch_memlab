@@ -6,7 +6,7 @@ except FileNotFoundError:
     long_description = ''
 
 setup(
-    name='pytorch_memlab',
+    name='pytorch-memlab',
     version='0.3.0',
     licence='MIT',
     description='A lab to do simple and accurate memory experiments on pytorch',
