@@ -1,6 +1,7 @@
 pytorch_memlab
 ======
-[![Build Status](https://travis-ci.com/Stonesjtu/pytorch_memlab.svg?token=vyTdxHbi1PCRzV6disHp&branch=master)](https://travis-ci.com/Stonesjtu/pytorch_memlab)
+[![Test](https://github.com/Stonesjtu/pytorch_memlab/actions/workflows/test.yml/badge.svg)](https://github.com/Stonesjtu/pytorch_memlab/actions/workflows/test.yml)
+[![Upload Python Package](https://github.com/Stonesjtu/pytorch_memlab/actions/workflows/pypi-publish.yml/badge.svg)](https://github.com/Stonesjtu/pytorch_memlab/actions/workflows/pypi-publish.yml)
 ![PyPI](https://img.shields.io/pypi/v/pytorch_memlab.svg)
 [![CodeQL: Python](https://github.com/Stonesjtu/pytorch_memlab/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/Stonesjtu/pytorch_memlab/actions/workflows/github-code-scanning/codeql)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/pytorch_memlab.svg)
