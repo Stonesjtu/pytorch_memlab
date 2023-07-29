@@ -74,11 +74,9 @@ def inner():
 def outer():
     linear = torch.nn.Linear(100, 100).cuda()
     linear2 = torch.nn.Linear(100, 100).cuda()
-    inner()
+    linear3 = torch.nn.Linear(100, 100).cuda()
 
-with LineProfiler(outer, inner) as prof:
-    outer()
-prof.display()
+work()
 ```
 
 After the script finishes or interrupted by keyboard, it gives the following
