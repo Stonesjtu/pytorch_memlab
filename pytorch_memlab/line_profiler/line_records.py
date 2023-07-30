@@ -222,8 +222,8 @@ class RecordsDisplay:
                                 .set_table_styles([{
                                     'selector': 'th',
                                     'props': [('text-align', 'left')]}])
-                                .hide_index()
-                                .render())
+                                .hide(axis=0)
+                                .to_html())
 
         template = '<h3><span style="font-family: monospace">{q}</span></h3><div>{c}</div>'
         return '\n'.join(template.format(q=q, c=c) for q, c in html.items())
