@@ -484,3 +484,7 @@ open source community.
   - Fix statistics shift in loop
 ##### 0.0.1 (2019-05-28)
   - initial release
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=stonesjtu/pytorch_memlab&type=Date)](https://star-history.com/#stonesjtu/pytorch_memlab&Date)
