@@ -92,7 +92,7 @@ class MemReporter():
 
             numel = tensor.numel()
             element_size = tensor.element_size()
-            fact_numel = tensor.storage().size()
+            fact_numel = tensor.untyped_storage().size()
             fact_memory_size = fact_numel * element_size
             # since pytorch allocate at least 512 Bytes for any tensor, round
             # up to a multiple of 512
@@ -101,7 +101,7 @@ class MemReporter():
 
             # tensor.storage should be the actual object related to memory
             # allocation
-            data_ptr = tensor.storage().data_ptr()
+            data_ptr = tensor.untyped_storage().data_ptr()
             if data_ptr in visited_data:
                 name = '{}(->{})'.format(
                     name,
