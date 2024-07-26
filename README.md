@@ -463,6 +463,8 @@ open source community.
 ## CHANGES
 
 
+##### 0.3.0 (2023-7-29)
+  - Fix `DataFrame.drop` for pandas 1.5+
 ##### 0.2.4 (2021-10-28)
   - Fix colab error (#35)
   - Support python3.8 (#38)
