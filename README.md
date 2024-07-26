@@ -204,8 +204,11 @@ As *Memory Profiler* only gives the overall memory usage information by lines,
 a more low-level memory usage information can be obtained by *Memory Reporter*.
 
 *Memory reporter* iterates all the `Tensor` objects and gets the underlying
-`Storage` object to get the actual memory usage instead of the surface
+`UntypedStorage` (previously `Storage`) object to get the actual memory usage instead of the surface
 `Tensor.size`.
+
+> see [UntypedStorage](https://pytorch.org/docs/stable/storage.html#torch.UntypedStorage) for detailed
+>  information
 
 #### Sample
 
