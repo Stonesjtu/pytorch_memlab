@@ -23,11 +23,12 @@ setup(
     license='MIT',
     include_package_data=True,
     zip_safe=True,
+    python_requires='>=3.8',
     install_requires=[
         'setuptools',
         'calmsize',
         'pandas>=0.18',
-        'torch>=1.4',
+        'torch>=2.0',
     ],
     extras_require={
         'ipython': ['IPython>=0.13'],
