@@ -57,10 +57,17 @@ def _line_records(raw_line_records: List[Dict[str, Any]], code_infos: List[Dict[
     # Column spec: https://pytorch.org/docs/stable/cuda.html#torch.cuda.memory_stats
     qual_names = {
         code_hash: info['func'].__qualname__ for code_hash, info in code_infos.items()}
-    records = (_accumulate_line_records(raw_line_records)
-               .assign(qual_name=lambda df: df.code_hash.map(qual_names))
-               .set_index(['qual_name', 'line'])
-               .drop(['code_hash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], axis=1))
+    # pandas < 2.1.0 support (python3.8)
+    try:
+        records = (_accumulate_line_records(raw_line_records)
+                .assign(qual_name=lambda df: df.code_hash.map(qual_names))
+                .set_index(['qual_name', 'line'])
+                .drop(['code_hash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], axis=1))
+    except AttributeError:
+        records = (_accumulate_line_records(raw_line_records)
+                .assign(qual_name=lambda df: df.code_hash.applymap(qual_names))
+                .set_index(['qual_name', 'line'])
+                .drop(['code_hash', 'num_alloc_retries', 'num_ooms', 'prev_record_idx'], axis=1))
     records.columns = pd.MultiIndex.from_tuples(
         [c.split('.') for c in records.columns])
 
@@ -181,7 +188,11 @@ class RecordsDisplay:
         for qual_name, merged in self._merge_line_records_with_code().items():
             maxlen = max(len(c) for c in merged.code)
             left_align = '{{:{maxlen}s}}'.format(maxlen=maxlen)
-            merged[byte_cols] = merged[byte_cols].map(readable_size)
+            # pandas < 2.1.0 support (python3.8)
+            try:
+                merged[byte_cols] = merged[byte_cols].map(readable_size)
+            except AttributeError:
+                merged[byte_cols] = merged[byte_cols].applymap(readable_size)
 
             # This is a mess, but I can't find any other way to left-align text strings.
             code_header = (left_align.format('code'), '', '')
