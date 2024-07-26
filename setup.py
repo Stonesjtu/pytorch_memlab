@@ -27,7 +27,7 @@ setup(
     install_requires=[
         'setuptools',
         'calmsize',
-        'pandas>=0.18',
+        'pandas>=2.1.0',
         'torch>=2.0',
     ],
     extras_require={
