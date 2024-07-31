@@ -1,4 +1,5 @@
 import torch
+import torch.optim
 from pytorch_memlab import MemReporter
 
 import pytest
@@ -56,6 +57,23 @@ def test_reporter_tie_weight():
 
     reporter = MemReporter(container)
     reporter.report()
+
+def test_reporter_with_optimizer():
+    linear = torch.nn.Linear(1024, 1024)
+    inp = torch.Tensor(512, 1024)
+    optimizer = torch.optim.Adam(linear.parameters())
+    # reporter = MemReporter(linear)
+
+    out = linear(inp*(inp+3)*(inp+2)).mean()
+    reporter = MemReporter(linear)
+    reporter.report()
+    out.backward()
+    # reporter.report()
+    optimizer.step()
+
+    reporter.add_optimizer(optimizer)
+    reporter.report()
+
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason='no CUDA')
 @pytest.mark.skipif(concentrate_mode, reason='concentrate')
