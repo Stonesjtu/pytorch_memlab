@@ -1,3 +1,5 @@
+import weakref
+
 import torch
 import torch.optim
 from pytorch_memlab import MemReporter
@@ -22,6 +24,23 @@ def test_readable_size_with_symbolic_byte_size(monkeypatch):
     monkeypatch.setattr('pytorch_memlab.utils.calmsize', lambda num_bytes: SymbolicSize())
 
     assert readable_size(object()) == '4M<ByteSize amount=s0>'
+
+def test_reporter_ignores_dead_weakrefs(monkeypatch):
+    class WeakrefTarget:
+        pass
+
+    target = WeakrefTarget()
+    dead_proxy = weakref.proxy(target)
+    del target
+
+    tensor = torch.empty(1)
+    monkeypatch.setattr(
+        'pytorch_memlab.mem_reporter.gc.get_objects',
+        lambda: [dead_proxy, tensor],
+    )
+
+    reporter = MemReporter()
+    reporter.report()
 
 def test_reporter():
     linear = torch.nn.Linear(1024, 1024)

@@ -79,7 +79,13 @@ class MemReporter():
         if self.pre_collect:
             gc.collect()
         objects = gc.get_objects()
-        tensors = [obj for obj in objects if isinstance(obj, torch.Tensor)]
+        tensors = []
+        for obj in objects:
+            try:
+                if isinstance(obj, torch.Tensor):
+                    tensors.append(obj)
+            except ReferenceError:
+                continue
         for t in tensors:
             self.device_mapping[t.device].append(t)
 
