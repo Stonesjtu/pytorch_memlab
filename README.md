@@ -463,6 +463,9 @@ open source community.
 ## CHANGES
 
 
+##### 0.3.1 (2026-06-08)
+  - Fix `MemReporter.report()` output for symbolic sizes from `torch.compile`
+  - Upgrade GitHub Actions workflow dependencies
 ##### 0.3.0 (2023-7-29)
   - Fix `DataFrame.drop` for pandas 1.5+
 ##### 0.2.4 (2021-10-28)
