@@ -463,6 +463,8 @@ open source community.
 ## CHANGES
 
 
+##### 0.3.2 (2026-06-08)
+  - Build standard PyPI release artifacts in GitHub Actions
 ##### 0.3.1 (2026-06-08)
   - Fix `MemReporter.report()` output for symbolic sizes from `torch.compile`
   - Upgrade GitHub Actions workflow dependencies
