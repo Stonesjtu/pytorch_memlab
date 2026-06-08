@@ -1,11 +1,27 @@
 import torch
 import torch.optim
 from pytorch_memlab import MemReporter
+from pytorch_memlab.utils import readable_size
 
 import pytest
 
 
 concentrate_mode = False
+
+def test_readable_size_with_nan():
+    assert readable_size(float('nan')) == ''
+
+def test_readable_size_with_symbolic_byte_size(monkeypatch):
+    class SymbolicSize:
+        def __format__(self, spec):
+            raise TypeError('unsupported format string')
+
+        def __str__(self):
+            return '4M<ByteSize amount=s0>'
+
+    monkeypatch.setattr('pytorch_memlab.utils.calmsize', lambda num_bytes: SymbolicSize())
+
+    assert readable_size(object()) == '4M<ByteSize amount=s0>'
 
 def test_reporter():
     linear = torch.nn.Linear(1024, 1024)
