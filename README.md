@@ -497,4 +497,4 @@ open source community.
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=stonesjtu/pytorch_memlab&type=Date)](https://star-history.com/#stonesjtu/pytorch_memlab&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=stonesjtu/pytorch_memlab&type=Date)](https://star-history.dera.page/#stonesjtu/pytorch_memlab&Date)
